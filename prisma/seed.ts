@@ -19,7 +19,29 @@ async function main() {
     });
   }
 
-  console.log(`Seeded user ${phone} with roles HOUSEHOLD, BUSINESS.`);
+  // A sample active listing so the listings screen isn't empty on first run.
+  const existingListing = await prisma.listing.findFirst({
+    where: { sellerId: user.id },
+  });
+  if (!existingListing) {
+    await prisma.listing.create({
+      data: {
+        sellerId: user.id,
+        sellerType: "HOUSEHOLD",
+        materialCategory: "PLASTIC",
+        title: "Clean PET bottles, ~6 kg",
+        description: "About a month of household plastic bottles, rinsed.",
+        photos: JSON.stringify(["https://example.com/bottles.jpg"]),
+        quantityMin: 5,
+        quantityMax: 8,
+        quantityUnit: "KG",
+        locality: "Koramangala, Bengaluru",
+        availability: "WEEKENDS",
+      },
+    });
+  }
+
+  console.log(`Seeded user ${phone} with roles HOUSEHOLD, BUSINESS and a listing.`);
 }
 
 main()

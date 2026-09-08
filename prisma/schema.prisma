@@ -1,6 +1,7 @@
 // Prisma schema for the Recyclable Scrap Marketplace.
 // Step 2 introduces the accounts domain: users, multi-role support, mocked
-// phone verification, and sessions. Listings/discovery arrive in later steps.
+// phone verification, and sessions. Step 3 adds scrap listings. Discovery
+// (nearby browsing/filters) arrives in a later step.
 
 generator client {
   provider = "prisma-client-js"
@@ -21,6 +22,7 @@ model User {
 
   roles    UserRole[]
   sessions Session[]
+  listings Listing[]
 }
 
 // One role a user has taken on. A user may hold several roles at once
@@ -63,4 +65,33 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// A scrap listing posted by a household or business. The material category is
+// fixed to an ordinary recyclable type (see src/lib/materials.ts); quantity is
+// captured as a min/max range with a unit; locality is an approximate area.
+// Photos are stored as a JSON-encoded array of URLs. A listing moves through
+// ACTIVE -> PAUSED (temporarily hidden) and can be CLOSED once and for all.
+model Listing {
+  id               String   @id @default(cuid())
+  sellerId         String
+  sellerType       String // HOUSEHOLD | BUSINESS — the capacity the seller is listing in
+  materialCategory String
+  title            String
+  description      String?
+  photos           String // JSON-encoded array of photo URLs
+  quantityMin      Float
+  quantityMax      Float
+  quantityUnit     String
+  locality         String
+  availability     String
+  status           String   @default("ACTIVE") // ACTIVE | PAUSED | CLOSED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([materialCategory])
 }

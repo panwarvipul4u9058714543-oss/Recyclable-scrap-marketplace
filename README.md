@@ -52,8 +52,24 @@ Tracked in [issue #2](https://github.com/panwarvipul4u9058714543-oss/Recyclable-
 1. **Project scaffolding** ✅ — Next.js + TS + Prisma/SQLite + Vitest/Playwright.
 2. **Accounts, roles (multi-role) and phone verification** ✅ — registration with
    mocked OTP verification, multi-role selection, sessions, role-aware dashboard.
-3. Scrap listings (create/edit/pause/close) with required fields and category warnings.
+3. **Scrap listings** ✅ — households/businesses create, edit, pause and close
+   listings with a fixed material category, photos, an estimated quantity range,
+   approximate locality, availability and seller type, plus "ordinary recyclable
+   scrap only" category warnings.
 4. Nearby discovery with material/quantity/distance/availability filters and role-specific screens.
+
+### Scrap listings
+
+Sellers (households and businesses) manage listings from `/listings`:
+
+- Each listing has a fixed **material category** drawn from a set of ordinary
+  recyclable materials (`src/lib/materials.ts`), **photos** (URLs), an estimated
+  **quantity range** with a unit, an approximate **locality**, **availability**
+  and the **seller type** the user is listing in.
+- The create/edit form always shows the *ordinary recyclable scrap only* notice
+  (prohibited/hazardous items) and a category-specific safety warning.
+- Listings move through `ACTIVE → PAUSED` (and back) and can be `CLOSED` once;
+  closed listings can no longer be edited or reopened.
 
 ### Phone verification (mocked)
 

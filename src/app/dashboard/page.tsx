@@ -52,11 +52,28 @@ export default async function DashboardPage() {
         </ul>
       )}
 
+      {canSell && (
+        <p style={{ marginTop: "1.5rem" }}>
+          <Link href="/listings" style={ctaStyle}>
+            Manage your listings
+          </Link>
+        </p>
+      )}
+
       <p style={{ marginTop: "1.5rem", color: "#9e9e9e" }}>
         {canSell
-          ? "Listing creation is coming next (Step 3)."
+          ? "Post and manage scrap listings from the listings screen."
           : "Nearby-listing discovery is coming soon (Step 4)."}
       </p>
     </main>
   );
 }
+
+const ctaStyle: React.CSSProperties = {
+  display: "inline-block",
+  padding: "0.55rem 1rem",
+  borderRadius: 6,
+  background: "#2e7d32",
+  color: "#fff",
+  textDecoration: "none",
+};
