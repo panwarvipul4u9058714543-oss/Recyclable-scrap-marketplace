@@ -1,7 +1,6 @@
 // Prisma schema for the Recyclable Scrap Marketplace.
-// Step 1 establishes the datasource/generator and a minimal placeholder model
-// so migrations and the client generate cleanly. The full domain model
-// (users, roles, listings, etc.) lands in Step 2.
+// Step 2 introduces the accounts domain: users, multi-role support, mocked
+// phone verification, and sessions. Listings/discovery arrive in later steps.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,9 +11,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Placeholder health-check row so the schema is valid and the DB is usable.
-// Removed/replaced when the real domain model is introduced in Step 2.
-model AppHealth {
+// A marketplace participant, identified by a verified phone number.
+model User {
+  id              String    @id @default(cuid())
+  phone           String    @unique
+  phoneVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  roles    UserRole[]
+  sessions Session[]
+}
+
+// One role a user has taken on. A user may hold several roles at once
+// (e.g. a household that is also a small business), so roles live in their
+// own table with a uniqueness constraint per (user, role).
+model UserRole {
   id        String   @id @default(cuid())
-  checkedAt DateTime @default(now())
+  userId    String
+  role      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+}
+
+// A one-time phone-verification challenge. The plaintext code is never
+// stored — only a hash — and each challenge expires and can be consumed once.
+model PhoneVerification {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([phone])
+}
+
+// An authenticated session, referenced by an opaque token stored in a cookie.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

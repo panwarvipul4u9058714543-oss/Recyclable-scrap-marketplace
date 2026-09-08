@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <main>
@@ -7,8 +9,8 @@ export default function HomePage() {
         businesses and recyclers for ordinary recyclable scrap.
       </p>
       <p>
-        This is the project foundation (Step 1). Accounts, roles and scrap
-        listings are being built next.
+        <Link href="/register">Get started</Link> — register with your phone and
+        choose how you&apos;ll use the marketplace.
       </p>
     </main>
   );

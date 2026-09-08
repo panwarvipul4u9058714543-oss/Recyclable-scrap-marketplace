@@ -50,6 +50,14 @@ npm run dev               # http://localhost:3000
 Tracked in [issue #2](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/2). Built in steps:
 
 1. **Project scaffolding** ✅ — Next.js + TS + Prisma/SQLite + Vitest/Playwright.
-2. Accounts, roles (multi-role) and phone verification.
+2. **Accounts, roles (multi-role) and phone verification** ✅ — registration with
+   mocked OTP verification, multi-role selection, sessions, role-aware dashboard.
 3. Scrap listings (create/edit/pause/close) with required fields and category warnings.
 4. Nearby discovery with material/quantity/distance/availability filters and role-specific screens.
+
+### Phone verification (mocked)
+
+Verification codes are generated and hashed server-side but delivered via a mock
+SMS sender that logs to the console. To exercise the flow without a real SMS
+provider, set `RSM_EXPOSE_OTP=1` (dev/test only — see `.env.example`) and the
+one-time code is returned in the API response and shown on the register screen.
