@@ -46,6 +46,8 @@ export interface ListingDTO {
   quantityMax: number;
   quantityUnit: QuantityUnit;
   locality: string;
+  latitude: number;
+  longitude: number;
   availability: Availability;
   status: ListingStatus;
   createdAt: Date;
@@ -70,6 +72,8 @@ export const listingInputSchema = z
     quantityMax: z.number().positive(),
     quantityUnit: quantityUnitSchema,
     locality: z.string().trim().min(2).max(120),
+    latitude: z.number().gte(-90).lte(90),
+    longitude: z.number().gte(-180).lte(180),
     availability: availabilitySchema,
   })
   .refine((v) => v.quantityMax >= v.quantityMin, {
@@ -79,7 +83,10 @@ export const listingInputSchema = z
 
 export type ListingInput = z.infer<typeof listingInputSchema>;
 
-function toDTO(row: Listing): ListingDTO {
+// Decode a Listing row into the DTO shape (photos parsed from JSON). Exported
+// so other services reading the same table (e.g. discovery) can return the
+// same shape without duplicating the decode.
+export function listingToDTO(row: Listing): ListingDTO {
   let photos: string[] = [];
   try {
     const parsed = JSON.parse(row.photos);
@@ -100,6 +107,8 @@ function toDTO(row: Listing): ListingDTO {
     quantityMax: row.quantityMax,
     quantityUnit: row.quantityUnit as QuantityUnit,
     locality: row.locality,
+    latitude: row.latitude,
+    longitude: row.longitude,
     availability: row.availability as Availability,
     status: row.status as ListingStatus,
     createdAt: row.createdAt,
@@ -120,6 +129,8 @@ function toWriteData(data: ListingInput) {
     quantityMax: data.quantityMax,
     quantityUnit: data.quantityUnit,
     locality: data.locality,
+    latitude: data.latitude,
+    longitude: data.longitude,
     availability: data.availability,
   };
 }
@@ -151,7 +162,7 @@ export async function createListing(
     data: { sellerId, ...toWriteData(data) },
   });
 
-  return toDTO(row);
+  return listingToDTO(row);
 }
 
 export async function updateListing(
@@ -170,7 +181,7 @@ export async function updateListing(
     data: toWriteData(data),
   });
 
-  return toDTO(row);
+  return listingToDTO(row);
 }
 
 // Apply a status change, enforcing ownership and the legal transitions.
@@ -188,7 +199,7 @@ async function transition(
     where: { id: listingId },
     data: { status: to },
   });
-  return toDTO(row);
+  return listingToDTO(row);
 }
 
 export function pauseListing(sellerId: string, listingId: string) {
@@ -207,7 +218,7 @@ export async function getListingForSeller(
   sellerId: string,
   listingId: string,
 ): Promise<ListingDTO> {
-  return toDTO(await loadOwned(sellerId, listingId));
+  return listingToDTO(await loadOwned(sellerId, listingId));
 }
 
 export async function listSellerListings(
@@ -217,10 +228,10 @@ export async function listSellerListings(
     where: { sellerId },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(toDTO);
+  return rows.map(listingToDTO);
 }
 
 export async function getListing(listingId: string): Promise<ListingDTO | null> {
   const row = await db.listing.findUnique({ where: { id: listingId } });
-  return row ? toDTO(row) : null;
+  return row ? listingToDTO(row) : null;
 }

@@ -56,6 +56,8 @@ export default async function EditListingPage({
     quantityMax: String(listing.quantityMax),
     quantityUnit: listing.quantityUnit,
     locality: listing.locality,
+    latitude: String(listing.latitude),
+    longitude: String(listing.longitude),
     availability: listing.availability,
   };
 

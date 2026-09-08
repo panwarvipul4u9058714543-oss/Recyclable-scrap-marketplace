@@ -26,6 +26,16 @@ export const ROLE_LABELS: Record<Role, string> = {
 /** Roles that are allowed to create scrap listings (used from Step 3 on). */
 export const SELLER_ROLES: readonly Role[] = ["HOUSEHOLD", "BUSINESS"];
 
+/**
+ * Roles that browse nearby listings — kabadiwalas, dealers and recyclers
+ * (used from Step 4 on).
+ */
+export const COLLECTOR_ROLES: readonly Role[] = [
+  "COLLECTOR",
+  "DEALER",
+  "RECYCLER",
+];
+
 export const roleSchema = z.enum(ROLES);
 
 /**

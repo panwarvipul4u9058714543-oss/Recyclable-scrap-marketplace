@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { ROLE_LABELS, SELLER_ROLES, type Role } from "@/lib/roles";
+import {
+  COLLECTOR_ROLES,
+  ROLE_LABELS,
+  SELLER_ROLES,
+  type Role,
+} from "@/lib/roles";
 import { LogoutButton } from "./logout-button";
 
-// Role-specific guidance shown on the dashboard. The full role-specific
-// workflows (listing management, nearby discovery) arrive in later steps.
+// Role-specific guidance shown on the dashboard. Each role sees a short
+// description and the CTAs relevant to that role — sellers get listings,
+// collector-type roles get nearby-discovery.
 const ROLE_ACTIONS: Record<Role, string> = {
   HOUSEHOLD: "Create a listing for scrap you want collected.",
   BUSINESS: "List recurring recyclable scrap from your premises.",
@@ -19,6 +25,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/register");
 
   const canSell = user.roles.some((r) => SELLER_ROLES.includes(r));
+  const canBrowse = user.roles.some((r) => COLLECTOR_ROLES.includes(r));
 
   return (
     <main>
@@ -52,19 +59,29 @@ export default async function DashboardPage() {
         </ul>
       )}
 
-      {canSell && (
-        <p style={{ marginTop: "1.5rem" }}>
-          <Link href="/listings" style={ctaStyle}>
-            Manage your listings
-          </Link>
-        </p>
+      {(canSell || canBrowse) && (
+        <section aria-label="Your actions" style={{ marginTop: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.05rem" }}>What you can do</h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem" }}>
+            {canSell && (
+              <Link href="/listings" style={ctaStyle}>
+                Manage your listings
+              </Link>
+            )}
+            {canBrowse && (
+              <Link href="/nearby" style={ctaStyle}>
+                Browse nearby listings
+              </Link>
+            )}
+          </div>
+        </section>
       )}
 
-      <p style={{ marginTop: "1.5rem", color: "#9e9e9e" }}>
-        {canSell
-          ? "Post and manage scrap listings from the listings screen."
-          : "Nearby-listing discovery is coming soon (Step 4)."}
-      </p>
+      {!canSell && !canBrowse && (
+        <p style={{ marginTop: "1.5rem", color: "#9e9e9e" }}>
+          Pick a role to unlock the workflows that fit it.
+        </p>
+      )}
     </main>
   );
 }

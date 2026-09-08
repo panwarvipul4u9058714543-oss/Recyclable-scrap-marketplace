@@ -36,6 +36,8 @@ const validInput = {
   quantityMax: 8,
   quantityUnit: "KG" as const,
   locality: "Koramangala, Bengaluru",
+  latitude: 12.9352,
+  longitude: 77.6245,
   availability: "WEEKENDS" as const,
 };
 

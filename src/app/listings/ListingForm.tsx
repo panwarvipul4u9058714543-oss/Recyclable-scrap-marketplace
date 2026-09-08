@@ -31,6 +31,8 @@ export interface ListingFormValues {
   quantityMax: string;
   quantityUnit: string;
   locality: string;
+  latitude: string;
+  longitude: string;
   availability: string;
 }
 
@@ -52,6 +54,8 @@ function defaults(sellerTypes: SellerType[]): ListingFormValues {
     quantityMax: "",
     quantityUnit: QUANTITY_UNITS[0],
     locality: "",
+    latitude: "",
+    longitude: "",
     availability: AVAILABILITY_OPTIONS[0],
   };
 }
@@ -115,6 +119,26 @@ export function ListingForm({
       return;
     }
 
+    if (values.latitude.trim() === "" || values.longitude.trim() === "") {
+      setError("Enter the pickup location (latitude and longitude).");
+      return;
+    }
+    const latitude = Number(values.latitude);
+    const longitude = Number(values.longitude);
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      setError(
+        "Latitude must be between -90 and 90, longitude between -180 and 180.",
+      );
+      return;
+    }
+
     const payload = {
       sellerType: values.sellerType,
       materialCategory: values.materialCategory,
@@ -125,6 +149,8 @@ export function ListingForm({
       quantityMax,
       quantityUnit: values.quantityUnit,
       locality: values.locality,
+      latitude,
+      longitude,
       availability: values.availability,
     };
 
@@ -292,6 +318,39 @@ export function ListingForm({
         style={inputStyle}
       />
 
+      <fieldset style={fieldsetStyle}>
+        <legend>Pickup coordinates</legend>
+        <p style={hintStyle}>
+          Used to place your listing on nearby collectors&apos; screens.
+        </p>
+        <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="latitude">Latitude</label>
+            <input
+              id="latitude"
+              type="number"
+              step="any"
+              value={values.latitude}
+              onChange={(e) => set("latitude", e.target.value)}
+              placeholder="12.9352"
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="longitude">Longitude</label>
+            <input
+              id="longitude"
+              type="number"
+              step="any"
+              value={values.longitude}
+              onChange={(e) => set("longitude", e.target.value)}
+              placeholder="77.6245"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+      </fieldset>
+
       <label htmlFor="availability">Availability</label>
       <select
         id="availability"
@@ -361,4 +420,10 @@ const fieldsetStyle: React.CSSProperties = {
   borderRadius: 8,
   padding: "0.6rem 1rem 0",
   margin: "0 0 1rem",
+};
+
+const hintStyle: React.CSSProperties = {
+  color: "#9e9e9e",
+  fontSize: "0.85rem",
+  margin: "0 0 0.6rem",
 };

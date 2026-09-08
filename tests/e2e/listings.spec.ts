@@ -51,6 +51,8 @@ test("a household creates, pauses and closes a scrap listing", async ({
   await page.getByLabel("From", { exact: true }).fill("5");
   await page.getByLabel("To", { exact: true }).fill("8");
   await page.getByLabel("Approximate locality").fill("Koramangala, Bengaluru");
+  await page.getByLabel("Latitude").fill("12.9352");
+  await page.getByLabel("Longitude").fill("77.6245");
   await page.getByRole("button", { name: "Publish listing" }).click();
 
   // Back on the listings screen the new ACTIVE listing shows.

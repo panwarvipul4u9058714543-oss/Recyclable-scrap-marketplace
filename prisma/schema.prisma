@@ -1,7 +1,7 @@
 // Prisma schema for the Recyclable Scrap Marketplace.
 // Step 2 introduces the accounts domain: users, multi-role support, mocked
-// phone verification, and sessions. Step 3 adds scrap listings. Discovery
-// (nearby browsing/filters) arrives in a later step.
+// phone verification, and sessions. Step 3 adds scrap listings. Step 4 adds
+// coordinates for nearby-discovery filters.
 
 generator client {
   provider = "prisma-client-js"
@@ -69,7 +69,8 @@ model Session {
 
 // A scrap listing posted by a household or business. The material category is
 // fixed to an ordinary recyclable type (see src/lib/materials.ts); quantity is
-// captured as a min/max range with a unit; locality is an approximate area.
+// captured as a min/max range with a unit; locality is an approximate area and
+// latitude/longitude are the coordinates used for nearby-discovery filtering.
 // Photos are stored as a JSON-encoded array of URLs. A listing moves through
 // ACTIVE -> PAUSED (temporarily hidden) and can be CLOSED once and for all.
 model Listing {
@@ -84,6 +85,8 @@ model Listing {
   quantityMax      Float
   quantityUnit     String
   locality         String
+  latitude         Float
+  longitude        Float
   availability     String
   status           String   @default("ACTIVE") // ACTIVE | PAUSED | CLOSED
   createdAt        DateTime @default(now())

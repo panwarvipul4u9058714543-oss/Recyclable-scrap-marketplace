@@ -56,7 +56,25 @@ Tracked in [issue #2](https://github.com/panwarvipul4u9058714543-oss/Recyclable-
    listings with a fixed material category, photos, an estimated quantity range,
    approximate locality, availability and seller type, plus "ordinary recyclable
    scrap only" category warnings.
-4. Nearby discovery with material/quantity/distance/availability filters and role-specific screens.
+4. **Nearby discovery** ✅ — collectors, dealers and recyclers browse active
+   listings from a chosen search location and filter by material, minimum
+   quantity (in a matching unit), maximum distance and availability. The
+   dashboard shows role-specific CTAs (sellers see listing management,
+   collector-type roles see nearby discovery).
+
+### Nearby discovery
+
+Collectors, dealers and recyclers browse listings from `/nearby`:
+
+- Set a search location (latitude/longitude, or "Use my location") and pick any
+  combination of **material**, **availability**, **minimum quantity + unit** and
+  **maximum distance**. Results are the other sellers' `ACTIVE` listings
+  sorted by great-circle distance from the search origin.
+- Distance is computed with the Haversine formula (`src/lib/discovery/discovery.ts`);
+  filtering happens in the application since SQLite has no spatial functions.
+- The dashboard tailors its CTAs to each user's roles — sellers see listing
+  management, collector-type roles see nearby discovery. A user with both
+  seller and collector roles sees both.
 
 ### Scrap listings
 
