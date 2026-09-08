@@ -1,0 +1,20 @@
+// Prisma schema for the Recyclable Scrap Marketplace.
+// Step 1 establishes the datasource/generator and a minimal placeholder model
+// so migrations and the client generate cleanly. The full domain model
+// (users, roles, listings, etc.) lands in Step 2.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Placeholder health-check row so the schema is valid and the DB is usable.
+// Removed/replaced when the real domain model is introduced in Step 2.
+model AppHealth {
+  id        String   @id @default(cuid())
+  checkedAt DateTime @default(now())
+}
