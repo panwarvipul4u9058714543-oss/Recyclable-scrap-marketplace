@@ -125,21 +125,26 @@ model Interest {
 }
 
 // The seller's pick of a buyer for a listing. Selection creates the connection
-// in RESERVED state with an expiry; either party can cancel, and an expired
-// reservation transitions to EXPIRED on the next read. `sellerRevealedAt` /
-// `collectorRevealedAt` back the mutual contact-reveal flow — exact phone
-// numbers and pickup coordinates become visible only once both are set. A
-// listing may hold at most one non-terminal connection at a time; the
-// service layer enforces this.
+// in RESERVED state with an expiry; either party can cancel, mark completed
+// or mark failed, and an unattended reservation transitions to EXPIRED on
+// the next read. `sellerRevealedAt` / `collectorRevealedAt` back the mutual
+// contact-reveal flow — exact phone numbers and pickup coordinates become
+// visible only once both are set. `actualQuantity`, `finalPrice` and
+// `failureReason` capture optional pickup outcome details separately from
+// the listing's original estimate. A listing may hold at most one
+// non-terminal connection at a time; the service layer enforces this.
 model Connection {
   id                  String    @id @default(cuid())
   listingId           String
   sellerId            String
   collectorId         String
-  status              String    @default("RESERVED") // RESERVED | CANCELLED | EXPIRED
+  status              String    @default("RESERVED") // RESERVED | CANCELLED | EXPIRED | COMPLETED | FAILED
   expiresAt           DateTime
   sellerRevealedAt    DateTime?
   collectorRevealedAt DateTime?
+  actualQuantity      Float?
+  finalPrice          Float?
+  failureReason       String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 

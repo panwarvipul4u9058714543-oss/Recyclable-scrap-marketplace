@@ -53,6 +53,9 @@ export default async function ConnectionDetailPage({ params }: Params) {
           pickup: detail.pickup,
           expiresAt: detail.expiresAt.toISOString(),
           viewerIsSeller,
+          actualQuantity: detail.actualQuantity,
+          finalPrice: detail.finalPrice,
+          failureReason: detail.failureReason,
         }}
         initialMessages={messages.map((m) => ({
           id: m.id,

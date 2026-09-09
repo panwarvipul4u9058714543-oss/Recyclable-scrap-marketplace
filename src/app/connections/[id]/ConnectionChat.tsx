@@ -12,7 +12,7 @@ interface Message {
 
 interface ConnectionSummary {
   id: string;
-  status: "RESERVED" | "CANCELLED" | "EXPIRED";
+  status: "RESERVED" | "CANCELLED" | "EXPIRED" | "COMPLETED" | "FAILED";
   youRevealed: boolean;
   counterpartyRevealed: boolean;
   contactRevealed: boolean;
@@ -21,6 +21,9 @@ interface ConnectionSummary {
   pickup: { latitude: number; longitude: number } | null;
   expiresAt: string;
   viewerIsSeller: boolean;
+  actualQuantity: number | null;
+  finalPrice: number | null;
+  failureReason: string | null;
 }
 
 interface Props {
@@ -44,8 +47,16 @@ export function ConnectionChat({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
-  const [busyAction, setBusyAction] = useState<"reveal" | "cancel" | null>(null);
+  const [busyAction, setBusyAction] = useState<
+    "reveal" | "cancel" | "complete" | "fail" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
+  const [outcomeMode, setOutcomeMode] = useState<"none" | "complete" | "fail">(
+    "none",
+  );
+  const [actualQuantity, setActualQuantity] = useState("");
+  const [finalPrice, setFinalPrice] = useState("");
+  const [failureReason, setFailureReason] = useState("");
   const listRef = useRef<HTMLUListElement | null>(null);
 
   useEffect(() => {
@@ -88,6 +99,65 @@ export function ConnectionChat({
         setError("Couldn't reveal your contact. Please try again.");
         return;
       }
+      router.refresh();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  // Parse a form field into an optional positive number payload, or return
+  // an error message describing why it can't be sent.
+  function parseOptionalPositive(
+    raw: string,
+    label: string,
+  ): { value?: number; error?: string } {
+    if (raw.trim() === "") return {};
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) {
+      return { error: `${label} must be a positive number.` };
+    }
+    return { value: n };
+  }
+
+  async function submitOutcome(kind: "complete" | "fail", e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    const qty = parseOptionalPositive(actualQuantity, "Actual quantity");
+    const price = parseOptionalPositive(finalPrice, "Final price");
+    if (qty.error || price.error) {
+      setError(qty.error ?? price.error!);
+      return;
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (qty.value !== undefined) payload.actualQuantity = qty.value;
+    if (price.value !== undefined) payload.finalPrice = price.value;
+    if (kind === "fail" && failureReason.trim() !== "") {
+      payload.failureReason = failureReason.trim();
+    }
+
+    setBusyAction(kind);
+    try {
+      const res = await fetch(`/api/connections/${connection.id}/${kind}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        setError(
+          kind === "complete"
+            ? "Couldn't mark this completed. Please check the fields and try again."
+            : "Couldn't mark this failed. Please check the fields and try again.",
+        );
+        return;
+      }
+      setOutcomeMode("none");
+      setActualQuantity("");
+      setFinalPrice("");
+      setFailureReason("");
       router.refresh();
     } catch {
       setError("Network error. Please try again.");
@@ -196,15 +266,156 @@ export function ConnectionChat({
               Reservation expires{" "}
               {new Date(connection.expiresAt).toLocaleString()}.
             </p>
-            <button
-              type="button"
-              onClick={cancel}
-              disabled={busyAction === "cancel"}
-              style={secondaryButtonStyle}
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                flexWrap: "wrap",
+                marginTop: "0.6rem",
+              }}
             >
-              {busyAction === "cancel" ? "Cancelling…" : "Cancel reservation"}
-            </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setOutcomeMode(outcomeMode === "complete" ? "none" : "complete")
+                }
+                style={primaryButtonStyle}
+              >
+                Mark as completed
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setOutcomeMode(outcomeMode === "fail" ? "none" : "fail")
+                }
+                style={secondaryButtonStyle}
+              >
+                Mark as failed
+              </button>
+              <button
+                type="button"
+                onClick={cancel}
+                disabled={busyAction === "cancel"}
+                style={secondaryButtonStyle}
+              >
+                {busyAction === "cancel" ? "Cancelling…" : "Cancel reservation"}
+              </button>
+            </div>
+
+            {outcomeMode === "complete" && (
+              <form
+                onSubmit={(e) => submitOutcome("complete", e)}
+                style={outcomeFormStyle}
+                aria-label="Complete pickup"
+              >
+                <h3 style={outcomeHeadingStyle}>Pickup complete</h3>
+                <label htmlFor="actualQuantity">
+                  Actual quantity (optional)
+                </label>
+                <input
+                  id="actualQuantity"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={actualQuantity}
+                  onChange={(e) => setActualQuantity(e.target.value)}
+                  placeholder="e.g. 7.5"
+                  style={inputStyle}
+                />
+                <label htmlFor="finalPrice">Final price (optional)</label>
+                <input
+                  id="finalPrice"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={finalPrice}
+                  onChange={(e) => setFinalPrice(e.target.value)}
+                  placeholder="e.g. 375"
+                  style={inputStyle}
+                />
+                <button
+                  type="submit"
+                  disabled={busyAction === "complete"}
+                  style={primaryButtonStyle}
+                >
+                  {busyAction === "complete" ? "Saving…" : "Confirm completed"}
+                </button>
+              </form>
+            )}
+
+            {outcomeMode === "fail" && (
+              <form
+                onSubmit={(e) => submitOutcome("fail", e)}
+                style={outcomeFormStyle}
+                aria-label="Report failure"
+              >
+                <h3 style={outcomeHeadingStyle}>Pickup failed</h3>
+                <label htmlFor="failureReason">
+                  What went wrong? (optional, max 500 chars)
+                </label>
+                <textarea
+                  id="failureReason"
+                  maxLength={500}
+                  value={failureReason}
+                  onChange={(e) => setFailureReason(e.target.value)}
+                  placeholder="e.g. Access blocked at the gate."
+                  style={{ ...inputStyle, minHeight: 80 }}
+                />
+                <label htmlFor="failQuantity">
+                  Actual quantity picked up (optional)
+                </label>
+                <input
+                  id="failQuantity"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={actualQuantity}
+                  onChange={(e) => setActualQuantity(e.target.value)}
+                  placeholder="e.g. 1"
+                  style={inputStyle}
+                />
+                <label htmlFor="failPrice">
+                  Final price agreed (optional)
+                </label>
+                <input
+                  id="failPrice"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={finalPrice}
+                  onChange={(e) => setFinalPrice(e.target.value)}
+                  placeholder="e.g. 50"
+                  style={inputStyle}
+                />
+                <button
+                  type="submit"
+                  disabled={busyAction === "fail"}
+                  style={primaryButtonStyle}
+                >
+                  {busyAction === "fail" ? "Saving…" : "Confirm failed"}
+                </button>
+              </form>
+            )}
           </>
+        )}
+        {isTerminal && (
+          <div style={{ marginTop: "0.4rem", color: "#9e9e9e" }}>
+            {connection.actualQuantity !== null && (
+              <p style={{ margin: "0.2rem 0" }}>
+                Actual quantity: <strong>{connection.actualQuantity}</strong>
+              </p>
+            )}
+            {connection.finalPrice !== null && (
+              <p style={{ margin: "0.2rem 0" }}>
+                Final price: <strong>{connection.finalPrice}</strong>
+              </p>
+            )}
+            {connection.failureReason && (
+              <p style={{ margin: "0.2rem 0" }}>
+                Reason: {connection.failureReason}
+              </p>
+            )}
+          </div>
         )}
       </section>
 
@@ -314,11 +525,23 @@ const primaryButtonStyle: React.CSSProperties = {
 
 const secondaryButtonStyle: React.CSSProperties = {
   padding: "0.4rem 0.9rem",
-  marginTop: "0.6rem",
   fontSize: "0.9rem",
   borderRadius: 6,
   border: "1px solid #444",
   background: "transparent",
   color: "inherit",
   cursor: "pointer",
+};
+
+const outcomeFormStyle: React.CSSProperties = {
+  marginTop: "0.8rem",
+  padding: "0.6rem 0.8rem",
+  border: "1px solid #333",
+  borderRadius: 8,
+  background: "rgba(255,255,255,0.02)",
+};
+
+const outcomeHeadingStyle: React.CSSProperties = {
+  fontSize: "0.95rem",
+  margin: "0 0 0.4rem",
 };

@@ -11,6 +11,7 @@ const STATUS: Record<ConnectionErrorCode, number> = {
   own_listing: 422,
   not_reserved: 409,
   empty_message: 400,
+  invalid_outcome: 400,
 };
 
 /**

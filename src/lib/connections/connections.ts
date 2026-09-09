@@ -3,12 +3,15 @@ import { db } from "@/lib/db";
 import { COLLECTOR_ROLES } from "@/lib/roles";
 
 /** Connection lifecycle. Step 1 introduced the row; steps 2–3 add reservation
- * expiry and chat/mutual-contact-reveal. Step 4 will add the terminal
- * COMPLETED / FAILED outcomes. */
+ * expiry and chat/mutual-contact-reveal; step 4 adds the terminal COMPLETED
+ * and FAILED outcomes with optional actual-quantity / final-price /
+ * failure-reason. */
 export const CONNECTION_STATUSES = [
   "RESERVED",
   "CANCELLED",
   "EXPIRED",
+  "COMPLETED",
+  "FAILED",
 ] as const;
 export type ConnectionStatus = (typeof CONNECTION_STATUSES)[number];
 
@@ -33,7 +36,8 @@ export type ConnectionErrorCode =
   | "already_selected"
   | "own_listing"
   | "not_reserved"
-  | "empty_message";
+  | "empty_message"
+  | "invalid_outcome";
 
 /** A domain error the API layer maps to an HTTP status. */
 export class ConnectionError extends Error {
@@ -60,6 +64,9 @@ export interface ConnectionDTO {
   expiresAt: Date;
   sellerRevealedAt: Date | null;
   collectorRevealedAt: Date | null;
+  actualQuantity: number | null;
+  finalPrice: number | null;
+  failureReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -98,6 +105,9 @@ function connectionToDTO(row: Connection): ConnectionDTO {
     expiresAt: row.expiresAt,
     sellerRevealedAt: row.sellerRevealedAt,
     collectorRevealedAt: row.collectorRevealedAt,
+    actualQuantity: row.actualQuantity,
+    finalPrice: row.finalPrice,
+    failureReason: row.failureReason,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -429,6 +439,111 @@ export async function revealContact(
   const updated = await db.connection.update({
     where: { id: row.id },
     data: patch,
+  });
+  return connectionToDTO(updated);
+}
+
+/** Optional outcome details recorded when marking a connection completed or
+ * failed. All fields are optional per the acceptance criteria (issue #3);
+ * positive-number and length rules are checked here. */
+export interface OutcomeDetails {
+  actualQuantity?: number | null;
+  finalPrice?: number | null;
+  failureReason?: string | null;
+}
+
+function normalizeOutcome(input: OutcomeDetails) {
+  const patch: {
+    actualQuantity: number | null;
+    finalPrice: number | null;
+    failureReason: string | null;
+  } = { actualQuantity: null, finalPrice: null, failureReason: null };
+
+  if (input.actualQuantity !== undefined && input.actualQuantity !== null) {
+    if (
+      typeof input.actualQuantity !== "number" ||
+      !Number.isFinite(input.actualQuantity) ||
+      input.actualQuantity <= 0
+    ) {
+      throw new ConnectionError("invalid_outcome");
+    }
+    patch.actualQuantity = input.actualQuantity;
+  }
+
+  if (input.finalPrice !== undefined && input.finalPrice !== null) {
+    if (
+      typeof input.finalPrice !== "number" ||
+      !Number.isFinite(input.finalPrice) ||
+      input.finalPrice <= 0
+    ) {
+      throw new ConnectionError("invalid_outcome");
+    }
+    patch.finalPrice = input.finalPrice;
+  }
+
+  if (input.failureReason !== undefined && input.failureReason !== null) {
+    const trimmed = String(input.failureReason).trim();
+    if (trimmed.length === 0) {
+      // A blank reason means "no reason given" — store null rather than "".
+      patch.failureReason = null;
+    } else if (trimmed.length > 500) {
+      throw new ConnectionError("invalid_outcome");
+    } else {
+      patch.failureReason = trimmed;
+    }
+  }
+
+  return patch;
+}
+
+/**
+ * Mark a RESERVED connection as COMPLETED. Optionally records the actual
+ * quantity picked up and final price agreed. Either party may call this.
+ * `failureReason` from the input is ignored for a completion.
+ */
+export async function markCompleted(
+  userId: string,
+  connectionId: string,
+  outcome: OutcomeDetails = {},
+): Promise<ConnectionDTO> {
+  const row = await loadForParty(userId, connectionId);
+  if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
+  const patch = normalizeOutcome(outcome);
+  const updated = await db.connection.update({
+    where: { id: row.id },
+    data: {
+      status: "COMPLETED",
+      actualQuantity: patch.actualQuantity,
+      finalPrice: patch.finalPrice,
+      // A completed pickup has no failure reason — never keep one from the
+      // caller's input even if they passed one.
+      failureReason: null,
+    },
+  });
+  return connectionToDTO(updated);
+}
+
+/**
+ * Mark a RESERVED connection as FAILED. Optionally records the failure
+ * reason and any partial quantity/price that was still agreed. Either party
+ * may call this.
+ */
+export async function markFailed(
+  userId: string,
+  connectionId: string,
+  outcome: OutcomeDetails = {},
+): Promise<ConnectionDTO> {
+  const row = await loadForParty(userId, connectionId);
+  if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
+  const patch = normalizeOutcome(outcome);
+  const updated = await db.connection.update({
+    where: { id: row.id },
+    data: {
+      status: "FAILED",
+      actualQuantity: patch.actualQuantity,
+      finalPrice: patch.finalPrice,
+      failureReason: patch.failureReason,
+    },
   });
   return connectionToDTO(updated);
 }

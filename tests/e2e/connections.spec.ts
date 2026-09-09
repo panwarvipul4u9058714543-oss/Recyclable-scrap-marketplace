@@ -62,7 +62,7 @@ async function createListing(page: Page, title: string) {
   await expect(page).toHaveURL(/\/listings$/);
 }
 
-test("interest → selection → chat → mutual reveal → cancel", async ({
+test("interest → selection → chat → mutual reveal → complete", async ({
   page,
 }) => {
   // 1) Seller registers and posts a listing.
@@ -137,16 +137,22 @@ test("interest → selection → chat → mutual reveal → cancel", async ({
   await expect(contact.getByRole("link", { name: sellerPhone })).toBeVisible();
   await expect(contact).toContainText(/Pickup coordinates:/i);
 
-  // 6) The buyer cancels the reservation; posting new messages is now
-  //    blocked and the listing reappears on /nearby.
-  page.on("dialog", (d) => d.accept());
-  await page
-    .getByRole("region", { name: "Reservation" })
-    .getByRole("button", { name: "Cancel reservation" })
-    .click();
-  await expect(
-    page.getByRole("region", { name: "Reservation" }),
-  ).toContainText("CANCELLED");
+  // 6) The buyer marks the pickup completed with an actual quantity + final
+  //    price; the recorded values show, chat becomes read-only and the
+  //    listing reappears on /nearby (a completed connection no longer holds
+  //    the listing).
+  const reservation = page.getByRole("region", { name: "Reservation" });
+  await reservation.getByRole("button", { name: "Mark as completed" }).click();
+  const outcomeForm = page.getByRole("form", { name: "Complete pickup" });
+  await outcomeForm.getByLabel("Actual quantity (optional)").fill("6.5");
+  await outcomeForm.getByLabel("Final price (optional)").fill("325");
+  await outcomeForm.getByRole("button", { name: "Confirm completed" }).click();
+
+  await expect(reservation).toContainText("COMPLETED");
+  await expect(reservation).toContainText("Actual quantity:");
+  await expect(reservation).toContainText("6.5");
+  await expect(reservation).toContainText("Final price:");
+  await expect(reservation).toContainText("325");
   await expect(chat).toContainText(/no new messages can be sent/i);
 
   await page.goto("/nearby");

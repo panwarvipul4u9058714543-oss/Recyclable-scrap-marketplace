@@ -77,6 +77,11 @@ steps:
    again. Matched parties chat on `/connections/[id]`, and exact phone
    numbers + pickup coordinates become visible only after both parties tap
    *Reveal my contact*.
+3. **Outcome recording** ✅ — either party can mark a reservation
+   `COMPLETED` or `FAILED` from the connection page. The flow captures the
+   optional actual quantity picked up, final price agreed and (for failure)
+   a short reason, kept separately from the listing's original estimate.
+   A completed or failed connection reopens the listing for a new selection.
 
 ### Buyer–seller connections
 
@@ -95,6 +100,10 @@ steps:
 - **Cancel / expire:** either party can cancel a reservation; an unattended
   reservation auto-transitions to `EXPIRED` on the next read. Either
   outcome reopens the listing on `/nearby` and unblocks a new selection.
+- **Complete / fail:** either party can mark the reservation `COMPLETED` or
+  `FAILED` and optionally record the actual quantity picked up, final price
+  agreed and a short failure reason. Values are stored alongside the
+  connection, kept separate from the listing's original quantity range.
 
 ### Nearby discovery
 

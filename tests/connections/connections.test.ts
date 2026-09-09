@@ -10,6 +10,8 @@ import {
   listListingInterests,
   listMessages,
   listSellerConnections,
+  markCompleted,
+  markFailed,
   postMessage,
   revealContact,
   selectBuyer,
@@ -432,6 +434,123 @@ describe("mutual contact reveal", () => {
     await expect(revealContact(seller, connection.id)).rejects.toThrow(
       ConnectionError,
     );
+  });
+});
+
+describe("markCompleted", () => {
+  async function makeReserved() {
+    const seller = await makeUser("+14155550100", ["HOUSEHOLD"]);
+    const collector = await makeUser("+14155550200", ["COLLECTOR"]);
+    const listing = await seedListing(seller);
+    await expressInterest(collector, listing.id);
+    const connection = await selectBuyer(seller, listing.id, collector);
+    return { seller, collector, connection };
+  }
+
+  it("records COMPLETED plus optional actual quantity and final price", async () => {
+    const { seller, connection } = await makeReserved();
+    const done = await markCompleted(seller, connection.id, {
+      actualQuantity: 7.5,
+      finalPrice: 375,
+    });
+    expect(done.status).toBe("COMPLETED");
+    expect(done.actualQuantity).toBe(7.5);
+    expect(done.finalPrice).toBe(375);
+    expect(done.failureReason).toBeNull();
+  });
+
+  it("accepts a completion with no details", async () => {
+    const { collector, connection } = await makeReserved();
+    const done = await markCompleted(collector, connection.id);
+    expect(done.status).toBe("COMPLETED");
+    expect(done.actualQuantity).toBeNull();
+    expect(done.finalPrice).toBeNull();
+  });
+
+  it("either party can mark completed", async () => {
+    const { collector, connection } = await makeReserved();
+    const done = await markCompleted(collector, connection.id);
+    expect(done.status).toBe("COMPLETED");
+  });
+
+  it("rejects a stranger", async () => {
+    const { connection } = await makeReserved();
+    const outsider = await makeUser("+14155550999", ["HOUSEHOLD"]);
+    await expect(markCompleted(outsider, connection.id)).rejects.toThrow(
+      ConnectionError,
+    );
+  });
+
+  it("rejects a non-positive quantity or price", async () => {
+    const { seller, connection } = await makeReserved();
+    await expect(
+      markCompleted(seller, connection.id, { actualQuantity: 0 }),
+    ).rejects.toThrow(ConnectionError);
+    await expect(
+      markCompleted(seller, connection.id, { finalPrice: -5 }),
+    ).rejects.toThrow(ConnectionError);
+  });
+
+  it("rejects marking a non-RESERVED connection", async () => {
+    const { seller, connection } = await makeReserved();
+    await markCompleted(seller, connection.id);
+    await expect(markCompleted(seller, connection.id)).rejects.toThrow(
+      ConnectionError,
+    );
+  });
+
+  it("frees the listing so a new selection is possible", async () => {
+    const seller = await makeUser("+14155550100", ["HOUSEHOLD"]);
+    const alice = await makeUser("+14155550200", ["COLLECTOR"]);
+    const bob = await makeUser("+14155550300", ["COLLECTOR"]);
+    const listing = await seedListing(seller);
+    await expressInterest(alice, listing.id);
+    await expressInterest(bob, listing.id);
+
+    const first = await selectBuyer(seller, listing.id, alice);
+    await markCompleted(seller, first.id, { actualQuantity: 6 });
+
+    const second = await selectBuyer(seller, listing.id, bob);
+    expect(second.collectorId).toBe(bob);
+  });
+});
+
+describe("markFailed", () => {
+  async function makeReserved() {
+    const seller = await makeUser("+14155550100", ["HOUSEHOLD"]);
+    const collector = await makeUser("+14155550200", ["COLLECTOR"]);
+    const listing = await seedListing(seller);
+    await expressInterest(collector, listing.id);
+    const connection = await selectBuyer(seller, listing.id, collector);
+    return { seller, collector, connection };
+  }
+
+  it("records FAILED with a reason and optional partial values", async () => {
+    const { collector, connection } = await makeReserved();
+    const done = await markFailed(collector, connection.id, {
+      failureReason: "  Access blocked at the gate.  ",
+      actualQuantity: 0.5,
+    });
+    expect(done.status).toBe("FAILED");
+    expect(done.failureReason).toBe("Access blocked at the gate.");
+    expect(done.actualQuantity).toBe(0.5);
+  });
+
+  it("normalizes a whitespace-only reason to null", async () => {
+    const { seller, connection } = await makeReserved();
+    const done = await markFailed(seller, connection.id, {
+      failureReason: "   ",
+    });
+    expect(done.failureReason).toBeNull();
+  });
+
+  it("rejects an overly long failure reason", async () => {
+    const { seller, connection } = await makeReserved();
+    await expect(
+      markFailed(seller, connection.id, {
+        failureReason: "x".repeat(501),
+      }),
+    ).rejects.toThrow(ConnectionError);
   });
 });
 
