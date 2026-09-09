@@ -47,6 +47,7 @@ model User {
   routes              Route[]
   routeNotifications  RouteNotification[]
   bulkRequirements    BulkRequirement[]
+  bulkResponsesAsSupplier BulkResponse[] @relation("BulkResponsesAsSupplier")
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -349,10 +350,60 @@ model BulkRequirement {
   updatedAt         DateTime  @updatedAt
 
   buyer User @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  responses BulkResponse[]
 
   @@index([buyerId])
   @@index([status])
   @@index([material])
+}
+
+// A supplier's response to a bulk buy requirement. Starts PENDING (a signal
+// of interest with the offered quantity + notes); the buyer picks one to
+// SELECTED, which opens the chat + mutual contact reveal + outcome flow —
+// the same shape as household connections but scoped to one requirement.
+// At most one non-terminal (PENDING or SELECTED) response per
+// (requirement, supplier). Terminal states: WITHDRAWN, CANCELLED,
+// COMPLETED, FAILED.
+model BulkResponse {
+  id                  String    @id @default(cuid())
+  requirementId       String
+  supplierId          String
+  offeredQuantity     Float
+  offeredQuantityUnit String
+  notes               String?
+  status              String    @default("PENDING") // PENDING | WITHDRAWN | SELECTED | CANCELLED | COMPLETED | FAILED
+  selectedAt          DateTime?
+  expiresAt           DateTime?
+  buyerRevealedAt     DateTime?
+  supplierRevealedAt  DateTime?
+  actualQuantity      Float?
+  finalPrice          Float?
+  failureReason       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  requirement BulkRequirement       @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  supplier    User                  @relation("BulkResponsesAsSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  messages    BulkResponseMessage[]
+
+  @@index([requirementId])
+  @@index([supplierId])
+  @@index([status])
+}
+
+// A chat message on a SELECTED bulk response. Either party may post while
+// the response is SELECTED; cancelled / completed / failed responses are
+// read-only.
+model BulkResponseMessage {
+  id         String   @id @default(cuid())
+  responseId String
+  senderId   String
+  body       String
+  createdAt  DateTime @default(now())
+
+  response BulkResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
 }
 
 // A chat message on a connection. Either party may post while the connection

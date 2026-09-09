@@ -2,9 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { listBulkRequirementsForBuyer } from "@/lib/bulk/requirements";
+import { listResponsesForSupplier } from "@/lib/bulk/responses";
 import { BULK_BUYER_ROLES, BULK_SUPPLIER_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { BulkRequirementForm } from "./BulkRequirementForm";
 import { BulkRequirementList } from "./BulkRequirementList";
+import { SupplierResponsesList } from "./SupplierResponsesList";
 
 export default async function BulkPage() {
   const user = await getCurrentUser();
@@ -36,6 +38,9 @@ export default async function BulkPage() {
   const mine = canPublish
     ? await listBulkRequirementsForBuyer(user.id)
     : [];
+  const myResponses = canRespond
+    ? await listResponsesForSupplier(user.id)
+    : [];
 
   return (
     <main>
@@ -52,11 +57,30 @@ export default async function BulkPage() {
       </p>
 
       {canRespond && (
-        <p>
-          <Link href="/bulk/browse" style={ctaStyle}>
-            Browse bulk buy requirements
-          </Link>
-        </p>
+        <>
+          <p>
+            <Link href="/bulk/browse" style={ctaStyle}>
+              Browse bulk buy requirements
+            </Link>
+          </p>
+          {myResponses.length > 0 && (
+            <section
+              aria-label="Your bulk responses"
+              style={{ margin: "1.5rem 0" }}
+            >
+              <h2 style={{ fontSize: "1.05rem" }}>Your responses</h2>
+              <SupplierResponsesList
+                responses={myResponses.map((r) => ({
+                  id: r.id,
+                  requirementId: r.requirementId,
+                  offeredQuantity: r.offeredQuantity,
+                  offeredQuantityUnit: r.offeredQuantityUnit,
+                  status: r.status,
+                }))}
+              />
+            </section>
+          )}
+        </>
       )}
 
       {canPublish && (

@@ -247,6 +247,14 @@ export function BulkBrowser() {
                     {r.qualityNotes}
                   </p>
                 )}
+                <p style={{ margin: "0.6rem 0 0" }}>
+                  <Link
+                    href={`/bulk/${r.id}`}
+                    style={{ fontSize: "0.9rem" }}
+                  >
+                    Open requirement → respond
+                  </Link>
+                </p>
                 <div style={buyerBadgeStyle}>
                   <div>
                     <strong>
