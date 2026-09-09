@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import {
+  listListingInterests,
+  listSellerConnections,
+} from "@/lib/connections/connections";
 import { SELLER_TYPES, listSellerListings } from "@/lib/listings/listings";
 import {
   AVAILABILITY_LABELS,
@@ -8,6 +12,7 @@ import {
   QUANTITY_UNIT_LABELS,
 } from "@/lib/materials";
 import { ListingActions } from "./ListingActions";
+import { SelectBuyerButton } from "./SelectBuyerButton";
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "#81c784",
@@ -21,6 +26,32 @@ export default async function ListingsPage() {
 
   const isSeller = SELLER_TYPES.some((type) => user.roles.includes(type));
   const listings = await listSellerListings(user.id);
+
+  // Fetch interests and existing connections per listing so each card can show
+  // the interested-buyers panel without a client-side round-trip. A single
+  // batched query for connections keeps this O(1); interests are per-listing.
+  const connections = await listSellerConnections(user.id);
+  const connectionByListing = new Map(
+    connections.map((c) => [c.listingId, c] as const),
+  );
+  const interestsByListing = new Map(
+    await Promise.all(
+      listings.map(
+        async (l) =>
+          [l.id, await listListingInterests(user.id, l.id)] as const,
+      ),
+    ),
+  );
+
+  // Resolve the selected collector's phone by joining the connection's
+  // collectorId against the interests already fetched for that listing.
+  function selectedPhoneFor(listingId: string): string | null {
+    const connection = connectionByListing.get(listingId);
+    if (!connection) return null;
+    const interests = interestsByListing.get(listingId) ?? [];
+    const match = interests.find((i) => i.collectorId === connection.collectorId);
+    return match?.collectorPhone ?? "buyer";
+  }
 
   return (
     <main>
@@ -99,6 +130,11 @@ export default async function ListingsPage() {
                 </Link>
               )}
             </div>
+            <BuyersPanel
+              listingId={listing.id}
+              interests={interestsByListing.get(listing.id) ?? []}
+              selectedCollectorPhone={selectedPhoneFor(listing.id)}
+            />
           </li>
         ))}
       </ul>
@@ -109,6 +145,68 @@ export default async function ListingsPage() {
     </main>
   );
 }
+
+interface BuyersPanelProps {
+  listingId: string;
+  interests: { id: string; collectorId: string; collectorPhone: string }[];
+  selectedCollectorPhone: string | null;
+}
+
+// Rendered under each listing: either "Selected: <buyer>" if the seller has
+// already picked someone, or the list of interested collectors with a Select
+// button next to each.
+function BuyersPanel({
+  listingId,
+  interests,
+  selectedCollectorPhone,
+}: BuyersPanelProps) {
+  if (selectedCollectorPhone) {
+    return (
+      <p style={selectedStyle}>
+        Selected buyer: <strong>{selectedCollectorPhone}</strong>
+      </p>
+    );
+  }
+  if (interests.length === 0) {
+    return (
+      <p style={{ ...metaStyle, marginTop: "0.6rem" }}>No interested buyers yet.</p>
+    );
+  }
+  return (
+    <div style={{ marginTop: "0.6rem" }}>
+      <h3 style={{ fontSize: "0.9rem", margin: "0 0 0.4rem" }}>
+        Interested buyers
+      </h3>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {interests.map((i) => (
+          <li
+            key={i.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "0.6rem",
+              padding: "0.3rem 0",
+            }}
+          >
+            <span>{i.collectorPhone}</span>
+            <SelectBuyerButton
+              listingId={listingId}
+              collectorId={i.collectorId}
+              label="Select"
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const selectedStyle: React.CSSProperties = {
+  color: "#81c784",
+  fontSize: "0.9rem",
+  margin: "0.6rem 0 0",
+};
 
 const newLinkStyle: React.CSSProperties = {
   padding: "0.5rem 0.9rem",

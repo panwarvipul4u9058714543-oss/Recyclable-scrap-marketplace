@@ -1,7 +1,8 @@
 // Prisma schema for the Recyclable Scrap Marketplace.
 // Step 2 introduces the accounts domain: users, multi-role support, mocked
 // phone verification, and sessions. Step 3 adds scrap listings. Step 4 adds
-// coordinates for nearby-discovery filters.
+// coordinates for nearby-discovery filters. Issue #3 step 1 adds the
+// buyer–seller interest/connection primitives.
 
 generator client {
   provider = "prisma-client-js"
@@ -20,9 +21,12 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  roles    UserRole[]
-  sessions Session[]
-  listings Listing[]
+  roles              UserRole[]
+  sessions           Session[]
+  listings           Listing[]
+  interests          Interest[]   @relation("CollectorInterests")
+  buyerConnections   Connection[] @relation("BuyerConnections")
+  sellerConnections  Connection[] @relation("SellerConnections")
 }
 
 // One role a user has taken on. A user may hold several roles at once
@@ -92,9 +96,52 @@ model Listing {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller      User         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  interests   Interest[]
+  connections Connection[]
 
   @@index([sellerId])
   @@index([status])
   @@index([materialCategory])
+}
+
+// A collector's expression of interest in a listing. One row per
+// (collector, listing) pair; withdrawing simply deletes the row. Interests
+// are a lightweight signal used by the seller to pick a buyer — they do not
+// reserve the listing on their own.
+model Interest {
+  id          String   @id @default(cuid())
+  listingId   String
+  collectorId String
+  createdAt   DateTime @default(now())
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  collector User    @relation("CollectorInterests", fields: [collectorId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, collectorId])
+  @@index([listingId])
+  @@index([collectorId])
+}
+
+// The seller's pick of a buyer for a listing. Step 1 creates it in SELECTED
+// state; later steps (reservation, chat/contact reveal, outcome) layer more
+// state onto the same row. A listing may hold at most one non-terminal
+// connection at a time; the service layer enforces this.
+model Connection {
+  id          String   @id @default(cuid())
+  listingId   String
+  sellerId    String
+  collectorId String
+  status      String   @default("SELECTED") // Step 1: SELECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seller    User    @relation("SellerConnections", fields: [sellerId], references: [id], onDelete: Cascade)
+  collector User    @relation("BuyerConnections", fields: [collectorId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([sellerId])
+  @@index([collectorId])
+  @@index([status])
 }

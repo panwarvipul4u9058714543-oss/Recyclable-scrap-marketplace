@@ -62,6 +62,27 @@ Tracked in [issue #2](https://github.com/panwarvipul4u9058714543-oss/Recyclable-
    dashboard shows role-specific CTAs (sellers see listing management,
    collector-type roles see nearby discovery).
 
+Issue [#3](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/3)
+extends the marketplace with the buyer–seller connection lifecycle. Built in
+steps:
+
+1. **Interest & buyer selection** ✅ — collectors express interest on nearby
+   listings; sellers see the list of interested buyers on their own listing
+   card and pick one, creating a `Connection` in `SELECTED` state. Both sides
+   see the resulting connection at `/connections`.
+
+### Buyer–seller connections
+
+- A collector taps *I'm interested* on a nearby listing (`/nearby`) to record
+  an `Interest`; withdrawing removes it.
+- The seller sees interested buyers on their own listing card at `/listings`
+  and taps *Select* to pick one. Selection creates a `Connection` in
+  `SELECTED` state; a listing may hold at most one non-terminal connection at
+  a time (later steps add reservation, chat/contact reveal and the terminal
+  outcomes).
+- Both parties see the connection at `/connections`, split into *Buyers you
+  selected* and *Listings that selected you*.
+
 ### Nearby discovery
 
 Collectors, dealers and recyclers browse listings from `/nearby`:

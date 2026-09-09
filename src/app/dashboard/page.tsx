@@ -73,6 +73,9 @@ export default async function DashboardPage() {
                 Browse nearby listings
               </Link>
             )}
+            <Link href="/connections" style={ctaStyle}>
+              Your connections
+            </Link>
           </div>
         </section>
       )}

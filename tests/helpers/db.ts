@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
  * Cheaper and safer than re-pushing the schema between tests.
  */
 export async function resetDb() {
+  await db.connection.deleteMany();
+  await db.interest.deleteMany();
   await db.listing.deleteMany();
   await db.session.deleteMany();
   await db.userRole.deleteMany();

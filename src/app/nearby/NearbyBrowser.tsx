@@ -26,6 +26,9 @@ interface NearbyResult {
   distanceKm: number;
 }
 
+/** Per-listing state for the "I'm interested" toggle. */
+type InterestState = "idle" | "sending" | "done" | "error";
+
 const ALL = "__all__" as const;
 
 export function NearbyBrowser() {
@@ -39,6 +42,30 @@ export function NearbyBrowser() {
   const [results, setResults] = useState<NearbyResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [interests, setInterests] = useState<Record<string, InterestState>>({});
+
+  async function toggleInterest(listingId: string) {
+    const current = interests[listingId] ?? "idle";
+    if (current === "sending") return;
+
+    setInterests((prev) => ({ ...prev, [listingId]: "sending" }));
+    const method = current === "done" ? "DELETE" : "POST";
+    try {
+      const res = await fetch(`/api/listings/${listingId}/interests`, {
+        method,
+      });
+      if (!res.ok) {
+        setInterests((prev) => ({ ...prev, [listingId]: "error" }));
+        return;
+      }
+      setInterests((prev) => ({
+        ...prev,
+        [listingId]: method === "POST" ? "done" : "idle",
+      }));
+    } catch {
+      setInterests((prev) => ({ ...prev, [listingId]: "error" }));
+    }
+  }
 
   function useMyLocation() {
     if (!navigator.geolocation) {
@@ -244,6 +271,36 @@ export function NearbyBrowser() {
                   {r.quantityMax} {QUANTITY_UNIT_LABELS[r.quantityUnit]} ·{" "}
                   {r.locality} · {AVAILABILITY_LABELS[r.availability]}
                 </p>
+                <div style={{ marginTop: "0.6rem" }}>
+                  {(() => {
+                    const state = interests[r.id] ?? "idle";
+                    if (state === "done") {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => toggleInterest(r.id)}
+                          style={secondaryButtonStyle}
+                        >
+                          Withdraw interest
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => toggleInterest(r.id)}
+                        disabled={state === "sending"}
+                        style={primaryButtonStyle}
+                      >
+                        {state === "sending"
+                          ? "Sending…"
+                          : state === "error"
+                          ? "Try again"
+                          : "I'm interested"}
+                      </button>
+                    );
+                  })()}
+                </div>
               </li>
             ))}
           </ul>
