@@ -99,3 +99,83 @@ export function isMaterialCategory(value: string): value is MaterialCategory {
 export function warningForCategory(value: string): string | null {
   return isMaterialCategory(value) ? MATERIAL_WARNINGS[value] : null;
 }
+
+/**
+ * Categories that are allowed but need extra caution — e-waste and any
+ * category that commonly contains batteries. The form surfaces an additional
+ * verification notice for these on top of the usual safety warning.
+ */
+export const RESTRICTED_CATEGORIES: readonly MaterialCategory[] = ["EWASTE"];
+
+/** Additional verification / handling guidance for restricted categories. */
+export const RESTRICTED_WARNINGS: Partial<Record<MaterialCategory, string>> = {
+  EWASTE:
+    "E-waste and batteries need extra care. Only list intact appliances and gadgets, hand over to a licensed recycler where possible, and be ready to verify the source of bulk lots.",
+};
+
+export function isRestrictedCategory(value: string): boolean {
+  return (
+    isMaterialCategory(value) &&
+    (RESTRICTED_CATEGORIES as readonly string[]).includes(value)
+  );
+}
+
+/** The extra restricted-category notice, or null when the category is not restricted. */
+export function restrictedWarningForCategory(value: string): string | null {
+  return isMaterialCategory(value) ? RESTRICTED_WARNINGS[value] ?? null : null;
+}
+
+/**
+ * Words and phrases that indicate a listing is not for ordinary recyclable
+ * scrap and must be rejected outright (biomedical, chemicals, hazardous,
+ * unknown liquids, sludge, suspicious/stolen).
+ */
+export const PROHIBITED_KEYWORDS: readonly string[] = [
+  "biomedical",
+  "biohazard",
+  "syringe",
+  "syringes",
+  "medical waste",
+  "chemical",
+  "chemicals",
+  "solvent",
+  "solvents",
+  "paint",
+  "paints",
+  "pesticide",
+  "pesticides",
+  "gas cylinder",
+  "aerosol",
+  "unknown liquid",
+  "unknown liquids",
+  "sludge",
+  "asbestos",
+  "radioactive",
+  "explosive",
+  "stolen",
+  "hazardous",
+];
+
+/**
+ * Returns the first prohibited term found in `text`, or null. Multi-word
+ * phrases match as substrings; single words use a word-boundary check so
+ * "chemistry" does not match "chemical" and "painter" does not match "paint".
+ */
+export function findProhibitedTerm(text: string): string | null {
+  if (!text) return null;
+  const haystack = text.toLowerCase();
+  for (const term of PROHIBITED_KEYWORDS) {
+    const needle = term.toLowerCase();
+    if (needle.includes(" ")) {
+      if (haystack.includes(needle)) return term;
+    } else {
+      const re = new RegExp(`\\b${escapeRegExp(needle)}\\b`, "i");
+      if (re.test(haystack)) return term;
+    }
+  }
+  return null;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

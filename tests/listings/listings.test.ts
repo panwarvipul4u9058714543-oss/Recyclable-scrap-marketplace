@@ -95,6 +95,25 @@ describe("createListing", () => {
       createListing(sellerId, { ...validInput, materialCategory: "URANIUM" }),
     ).rejects.toThrow();
   });
+
+  it("rejects a title that names a prohibited material", async () => {
+    const sellerId = await makeSeller("+14155550100");
+
+    await expect(
+      createListing(sellerId, { ...validInput, title: "Bag of old syringes" }),
+    ).rejects.toMatchObject({ code: "prohibited_content" });
+  });
+
+  it("rejects a description that names a prohibited material", async () => {
+    const sellerId = await makeSeller("+14155550100");
+
+    await expect(
+      createListing(sellerId, {
+        ...validInput,
+        description: "Also some asbestos sheets",
+      }),
+    ).rejects.toMatchObject({ code: "prohibited_content" });
+  });
 });
 
 describe("listSellerListings", () => {

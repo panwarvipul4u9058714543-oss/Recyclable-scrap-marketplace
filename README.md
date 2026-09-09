@@ -83,6 +83,17 @@ steps:
    a short reason, kept separately from the listing's original estimate.
    A completed or failed connection reopens the listing for a new selection.
 
+Issue [#4](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/4)
+adds trust, privacy and moderation. Built in steps:
+
+1. **Prohibited & restricted materials** ✅ — the listing service and form
+   reject titles/descriptions naming prohibited items (biomedical, chemicals,
+   solvents, paints, pesticides, gas cylinders, aerosols, unknown liquids,
+   sludge, asbestos, radioactive, explosive, hazardous or stolen material)
+   with a targeted error. Restricted categories such as **e-waste and
+   batteries** show an additional verification notice on top of the standard
+   safety warning.
+
 ### Buyer–seller connections
 
 - A collector taps *I'm interested* on a nearby listing (`/nearby`) to record

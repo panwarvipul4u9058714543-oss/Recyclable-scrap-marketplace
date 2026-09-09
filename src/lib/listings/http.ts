@@ -7,6 +7,7 @@ const STATUS: Record<ListingErrorCode, number> = {
   closed: 409,
   invalid_seller_type: 422,
   invalid_transition: 409,
+  prohibited_content: 422,
 };
 
 /**

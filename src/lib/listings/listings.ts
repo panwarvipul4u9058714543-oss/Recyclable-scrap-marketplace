@@ -6,6 +6,7 @@ import {
   type MaterialCategory,
   type QuantityUnit,
   availabilitySchema,
+  findProhibitedTerm,
   materialCategorySchema,
   quantityUnitSchema,
 } from "@/lib/materials";
@@ -23,7 +24,8 @@ export type ListingErrorCode =
   | "forbidden"
   | "closed"
   | "invalid_seller_type"
-  | "invalid_transition";
+  | "invalid_transition"
+  | "prohibited_content";
 
 /** A domain error the API layer maps to an HTTP status. */
 export class ListingError extends Error {
@@ -135,6 +137,16 @@ function toWriteData(data: ListingInput) {
   };
 }
 
+// Reject content that names a prohibited material (biomedical, chemicals,
+// hazardous, etc). Runs on every create/update so an edit cannot smuggle
+// prohibited terms into an existing listing.
+function assertContentAllowed(data: ListingInput) {
+  const text = `${data.title} ${data.description ?? ""}`;
+  if (findProhibitedTerm(text) !== null) {
+    throw new ListingError("prohibited_content");
+  }
+}
+
 // Ensure the seller actually holds the role they are listing in.
 async function assertSellerHoldsType(sellerId: string, sellerType: SellerType) {
   const role = await db.userRole.findUnique({
@@ -156,6 +168,7 @@ export async function createListing(
   input: unknown,
 ): Promise<ListingDTO> {
   const data = listingInputSchema.parse(input);
+  assertContentAllowed(data);
   await assertSellerHoldsType(sellerId, data.sellerType);
 
   const row = await db.listing.create({
@@ -174,6 +187,7 @@ export async function updateListing(
   if (existing.status === "CLOSED") throw new ListingError("closed");
 
   const data = listingInputSchema.parse(input);
+  assertContentAllowed(data);
   await assertSellerHoldsType(sellerId, data.sellerType);
 
   const row = await db.listing.update({

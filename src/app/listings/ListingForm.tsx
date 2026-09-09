@@ -11,6 +11,7 @@ import {
   PROHIBITED_NOTICE,
   QUANTITY_UNITS,
   QUANTITY_UNIT_LABELS,
+  restrictedWarningForCategory,
   warningForCategory,
 } from "@/lib/materials";
 import type { SellerType } from "@/lib/listings/listings";
@@ -76,6 +77,10 @@ export function ListingForm({
 
   const categoryWarning = useMemo(
     () => warningForCategory(values.materialCategory),
+    [values.materialCategory],
+  );
+  const restrictedNotice = useMemo(
+    () => restrictedWarningForCategory(values.materialCategory),
     [values.materialCategory],
   );
 
@@ -170,11 +175,18 @@ export function ListingForm({
             });
 
       if (!res.ok) {
-        setError(
-          res.status === 400
-            ? "Please check the highlighted fields and try again."
-            : "Could not save your listing. Please try again.",
-        );
+        const body = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        if (res.status === 422 && body?.error === "prohibited_content") {
+          setError(
+            "This listing looks like it names a prohibited material. Please remove hazardous, medical or other prohibited items and try again.",
+          );
+        } else if (res.status === 400) {
+          setError("Please check the highlighted fields and try again.");
+        } else {
+          setError("Could not save your listing. Please try again.");
+        }
         return;
       }
       router.push("/listings");
@@ -233,6 +245,12 @@ export function ListingForm({
       {categoryWarning && (
         <p role="note" style={warningStyle}>
           ⚠ {categoryWarning}
+        </p>
+      )}
+      {restrictedNotice && (
+        <p role="note" style={restrictedStyle}>
+          🔒 <strong>Extra verification may be required.</strong>{" "}
+          {restrictedNotice}
         </p>
       )}
 
@@ -412,6 +430,16 @@ const noticeStyle: React.CSSProperties = {
 const warningStyle: React.CSSProperties = {
   color: "#ffcc80",
   margin: "-0.6rem 0 1rem",
+  fontSize: "0.9rem",
+};
+
+const restrictedStyle: React.CSSProperties = {
+  border: "1px solid #b26a00",
+  background: "#2a1e0a",
+  color: "#ffcc80",
+  borderRadius: 8,
+  padding: "0.6rem 0.8rem",
+  margin: "-0.4rem 0 1rem",
   fontSize: "0.9rem",
 };
 
