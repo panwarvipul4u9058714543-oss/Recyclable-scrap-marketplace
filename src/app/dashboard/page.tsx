@@ -23,6 +23,7 @@ const ROLE_ACTIONS: Record<Role, string> = {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
+  if (user.suspendedAt) redirect("/suspended");
 
   const canSell = user.roles.some((r) => SELLER_ROLES.includes(r));
   const canBrowse = user.roles.some((r) => COLLECTOR_ROLES.includes(r));
@@ -79,7 +80,20 @@ export default async function DashboardPage() {
             <Link href="/profile" style={ctaStyle}>
               Edit your profile
             </Link>
+            {user.isAdmin && (
+              <Link href="/moderation" style={ctaStyle}>
+                Moderation queue
+              </Link>
+            )}
           </div>
+        </section>
+      )}
+
+      {!canSell && !canBrowse && user.isAdmin && (
+        <section aria-label="Admin actions" style={{ marginTop: "1.5rem" }}>
+          <Link href="/moderation" style={ctaStyle}>
+            Moderation queue
+          </Link>
         </section>
       )}
 

@@ -5,8 +5,18 @@ import {
   type MaterialCategory,
   materialCategorySchema,
 } from "@/lib/materials";
+import { isUserSuspended } from "@/lib/moderation/moderation";
 import { getRatingSummary, type RatingSummary } from "@/lib/ratings/ratings";
 import type { Role } from "@/lib/roles";
+
+export type ProfileErrorCode = "suspended";
+
+export class ProfileError extends Error {
+  constructor(public readonly code: ProfileErrorCode) {
+    super(code);
+    this.name = "ProfileError";
+  }
+}
 
 /**
  * A user's own view of their profile. Every field is optional — the profile
@@ -52,6 +62,7 @@ export interface PublicProfile {
   acceptedMaterials: MaterialCategory[];
   roles: Role[];
   reputation: ReputationSummary;
+  isSuspended: boolean;
 }
 
 // A field can be:
@@ -139,6 +150,7 @@ export async function updateProfileForUser(
   userId: string,
   input: unknown,
 ): Promise<ProfileDTO> {
+  if (await isUserSuspended(userId)) throw new ProfileError("suspended");
   const data = profileInputSchema.parse(input);
 
   // Only include fields the caller actually provided. undefined = leave the
@@ -231,5 +243,6 @@ export async function getPublicProfile(
     acceptedMaterials: dto.acceptedMaterials,
     roles: user.roles.map((r) => r.role as Role),
     reputation,
+    isSuspended: user.suspendedAt !== null,
   };
 }

@@ -7,6 +7,7 @@ import { ListingForm } from "../ListingForm";
 export default async function NewListingPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
+  if (user.suspendedAt) redirect("/suspended");
 
   const sellerTypes = SELLER_TYPES.filter((type) =>
     user.roles.includes(type),

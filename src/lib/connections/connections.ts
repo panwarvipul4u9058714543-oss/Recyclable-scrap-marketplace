@@ -1,6 +1,7 @@
 import type { Connection, Interest, Message } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isBlockedEitherWay } from "@/lib/blocks/blocks";
+import { isUserSuspended } from "@/lib/moderation/moderation";
 import { COLLECTOR_ROLES } from "@/lib/roles";
 
 /** Connection lifecycle. Step 1 introduced the row; steps 2–3 add reservation
@@ -39,7 +40,8 @@ export type ConnectionErrorCode =
   | "not_reserved"
   | "empty_message"
   | "invalid_outcome"
-  | "blocked";
+  | "blocked"
+  | "suspended";
 
 /** A domain error the API layer maps to an HTTP status. */
 export class ConnectionError extends Error {
@@ -207,11 +209,18 @@ export async function expressInterest(
   collectorId: string,
   listingId: string,
 ): Promise<InterestDTO> {
+  if (await isUserSuspended(collectorId)) {
+    throw new ConnectionError("suspended");
+  }
   const listing = await loadListing(listingId);
   if (listing.sellerId === collectorId) {
     throw new ConnectionError("own_listing");
   }
   if (listing.status !== "ACTIVE") {
+    throw new ConnectionError("listing_not_active");
+  }
+  // Suspended sellers' listings drop out of discovery and interest.
+  if (await isUserSuspended(listing.sellerId)) {
     throw new ConnectionError("listing_not_active");
   }
   const reserved = await findActiveReservation(listingId);
@@ -268,6 +277,9 @@ export async function selectBuyer(
   listingId: string,
   collectorId: string,
 ): Promise<ConnectionDTO> {
+  if (await isUserSuspended(sellerId)) {
+    throw new ConnectionError("suspended");
+  }
   const listing = await loadListing(listingId);
   if (listing.sellerId !== sellerId) throw new ConnectionError("forbidden");
   if (listing.status !== "ACTIVE") {
@@ -278,6 +290,12 @@ export async function selectBuyer(
     where: { listingId_collectorId: { listingId, collectorId } },
   });
   if (!interest) throw new ConnectionError("not_interested");
+
+  // Suspended buyers cannot be selected either — same failure shape as a
+  // withdrawn interest to keep the seller's flow predictable.
+  if (await isUserSuspended(collectorId)) {
+    throw new ConnectionError("not_interested");
+  }
 
   const reserved = await findActiveReservation(listingId);
   if (reserved) throw new ConnectionError("already_selected");
@@ -564,6 +582,9 @@ export async function postMessage(
 ): Promise<MessageDTO> {
   const trimmed = body.trim();
   if (trimmed.length === 0) throw new ConnectionError("empty_message");
+  if (await isUserSuspended(userId)) {
+    throw new ConnectionError("suspended");
+  }
   const row = await loadForParty(userId, connectionId);
   if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
   const counterpartyId =

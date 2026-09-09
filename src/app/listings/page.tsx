@@ -23,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function ListingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
+  if (user.suspendedAt) redirect("/suspended");
 
   const isSeller = SELLER_TYPES.some((type) => user.roles.includes(type));
   const listings = await listSellerListings(user.id);

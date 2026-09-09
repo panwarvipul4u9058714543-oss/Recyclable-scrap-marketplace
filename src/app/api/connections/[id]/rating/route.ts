@@ -8,6 +8,7 @@ const STATUS: Record<string, number> = {
   forbidden: 403,
   not_terminal: 409,
   already_rated: 409,
+  suspended: 403,
 };
 
 export async function POST(

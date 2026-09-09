@@ -93,6 +93,9 @@ export async function discoverNearby(
     where: {
       status: "ACTIVE",
       sellerId: { notIn: hiddenSellerIds },
+      // Suspended sellers' listings never appear in discovery — an operator
+      // suspension pulls them out of the marketplace until they are reinstated.
+      seller: { suspendedAt: null },
       ...(filters.materialCategory
         ? { materialCategory: filters.materialCategory }
         : {}),

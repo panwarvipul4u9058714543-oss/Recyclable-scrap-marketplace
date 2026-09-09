@@ -10,6 +10,7 @@ import {
   materialCategorySchema,
   quantityUnitSchema,
 } from "@/lib/materials";
+import { isUserSuspended } from "@/lib/moderation/moderation";
 
 /** The seller capacities that may post a listing (a subset of the roles). */
 export const SELLER_TYPES = ["HOUSEHOLD", "BUSINESS"] as const;
@@ -25,7 +26,8 @@ export type ListingErrorCode =
   | "closed"
   | "invalid_seller_type"
   | "invalid_transition"
-  | "prohibited_content";
+  | "prohibited_content"
+  | "suspended";
 
 /** A domain error the API layer maps to an HTTP status. */
 export class ListingError extends Error {
@@ -167,6 +169,7 @@ export async function createListing(
   sellerId: string,
   input: unknown,
 ): Promise<ListingDTO> {
+  if (await isUserSuspended(sellerId)) throw new ListingError("suspended");
   const data = listingInputSchema.parse(input);
   assertContentAllowed(data);
   await assertSellerHoldsType(sellerId, data.sellerType);
@@ -183,6 +186,7 @@ export async function updateListing(
   listingId: string,
   input: unknown,
 ): Promise<ListingDTO> {
+  if (await isUserSuspended(sellerId)) throw new ListingError("suspended");
   const existing = await loadOwned(sellerId, listingId);
   if (existing.status === "CLOSED") throw new ListingError("closed");
 
@@ -205,6 +209,13 @@ async function transition(
   from: ListingStatus[],
   to: ListingStatus,
 ): Promise<ListingDTO> {
+  // Reopening (pause -> active) is a write; closing an existing listing while
+  // suspended is still allowed so users can wind their marketplace presence
+  // down. Callers that want the finer distinction can check callerIsSuspended
+  // themselves.
+  if (to !== "CLOSED" && (await isUserSuspended(sellerId))) {
+    throw new ListingError("suspended");
+  }
   const existing = await loadOwned(sellerId, listingId);
   if (!from.includes(existing.status as ListingStatus)) {
     throw new ListingError("invalid_transition");

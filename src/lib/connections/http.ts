@@ -13,6 +13,7 @@ const STATUS: Record<ConnectionErrorCode, number> = {
   empty_message: 400,
   invalid_outcome: 400,
   blocked: 403,
+  suspended: 403,
 };
 
 /**

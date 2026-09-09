@@ -8,6 +8,9 @@ export interface UserWithRoles {
   phone: string;
   phoneVerifiedAt: Date | null;
   roles: Role[];
+  isAdmin: boolean;
+  suspendedAt: Date | null;
+  suspensionReason: string | null;
 }
 
 /**
@@ -59,5 +62,8 @@ export async function getUserWithRoles(
     phone: user.phone,
     phoneVerifiedAt: user.phoneVerifiedAt,
     roles: user.roles.map((r) => r.role as Role),
+    isAdmin: user.isAdmin,
+    suspendedAt: user.suspendedAt,
+    suspensionReason: user.suspensionReason,
   };
 }

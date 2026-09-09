@@ -16,6 +16,7 @@ export default async function EditListingPage({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
+  if (user.suspendedAt) redirect("/suspended");
 
   let listing;
   try {

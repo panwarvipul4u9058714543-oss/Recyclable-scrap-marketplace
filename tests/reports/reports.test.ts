@@ -123,7 +123,7 @@ describe("listOpenReports", () => {
 
     await db.report.update({
       where: { id: r1.id },
-      data: { status: "REVIEWED", reviewedById: seller, reviewedAt: new Date() },
+      data: { status: "RESOLVED", reviewedById: seller, reviewedAt: new Date() },
     });
 
     const open = await listOpenReports();

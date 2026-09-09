@@ -15,13 +15,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// A marketplace participant, identified by a verified phone number.
+// A marketplace participant, identified by a verified phone number. `isAdmin`
+// gates the operator moderation surface; `suspendedAt` / `suspensionReason`
+// mark an account an operator has suspended for repeated no-shows,
+// harassment, fraud or unsafe behaviour — a suspended user can sign in but
+// service-level writes are refused and their listings drop out of discovery.
 model User {
-  id              String    @id @default(cuid())
-  phone           String    @unique
-  phoneVerifiedAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  phone             String    @unique
+  phoneVerifiedAt   DateTime?
+  isAdmin           Boolean   @default(false)
+  suspendedAt       DateTime?
+  suspensionReason  String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   roles              UserRole[]
   sessions           Session[]
@@ -195,7 +202,8 @@ model Connection {
 // A report of a listing or a user, filed by any signed-in user for operator
 // review. `targetType` is either "USER" or "LISTING"; the target row is not
 // FK-referenced (a listing may be deleted and the report should survive).
-// `status` moves OPEN -> REVIEWED | DISMISSED once an operator has acted.
+// `status` moves OPEN -> RESOLVED | DISMISSED once an operator has acted;
+// `reviewNote` is an optional short operator note attached at that point.
 model Report {
   id           String    @id @default(cuid())
   reporterId   String
@@ -203,7 +211,8 @@ model Report {
   targetId     String
   reason       String
   details      String?
-  status       String    @default("OPEN") // OPEN | REVIEWED | DISMISSED
+  status       String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  reviewNote   String?
   reviewedById String?
   reviewedAt   DateTime?
   createdAt    DateTime  @default(now())

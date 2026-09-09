@@ -12,6 +12,7 @@ const bodySchema = z.object({ userId: z.string().min(1) });
 const STATUS: Record<string, number> = {
   self_block: 422,
   not_found: 404,
+  suspended: 403,
 };
 
 export async function GET() {

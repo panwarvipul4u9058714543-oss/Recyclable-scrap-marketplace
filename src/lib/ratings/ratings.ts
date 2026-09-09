@@ -1,12 +1,14 @@
 import type { Rating } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { isUserSuspended } from "@/lib/moderation/moderation";
 
 export type RatingErrorCode =
   | "not_found"
   | "forbidden"
   | "not_terminal"
-  | "already_rated";
+  | "already_rated"
+  | "suspended";
 
 export class RatingError extends Error {
   constructor(public readonly code: RatingErrorCode) {
@@ -64,6 +66,7 @@ export async function submitRating(
   connectionId: string,
   input: unknown,
 ): Promise<RatingDTO> {
+  if (await isUserSuspended(raterId)) throw new RatingError("suspended");
   const data = ratingInputSchema.parse(input);
   const connection = await db.connection.findUnique({
     where: { id: connectionId },

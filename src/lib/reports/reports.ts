@@ -1,17 +1,19 @@
 import type { Report } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { isUserSuspended } from "@/lib/moderation/moderation";
 
 export const REPORT_TARGET_TYPES = ["USER", "LISTING"] as const;
 export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number];
 
-export const REPORT_STATUSES = ["OPEN", "REVIEWED", "DISMISSED"] as const;
+export const REPORT_STATUSES = ["OPEN", "RESOLVED", "DISMISSED"] as const;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
 
 export type ReportErrorCode =
   | "not_found"
   | "own_target"
-  | "invalid_status";
+  | "invalid_status"
+  | "suspended";
 
 export class ReportError extends Error {
   constructor(public readonly code: ReportErrorCode) {
@@ -28,6 +30,7 @@ export interface ReportDTO {
   reason: string;
   details: string | null;
   status: ReportStatus;
+  reviewNote: string | null;
   reviewedById: string | null;
   reviewedAt: Date | null;
   createdAt: Date;
@@ -57,6 +60,7 @@ function toDTO(row: Report): ReportDTO {
     reason: row.reason,
     details: row.details,
     status: row.status as ReportStatus,
+    reviewNote: row.reviewNote,
     reviewedById: row.reviewedById,
     reviewedAt: row.reviewedAt,
     createdAt: row.createdAt,
@@ -74,6 +78,7 @@ export async function reportListing(
   listingId: string,
   input: unknown,
 ): Promise<ReportDTO> {
+  if (await isUserSuspended(reporterId)) throw new ReportError("suspended");
   const data = reportInputSchema.parse(input);
   const listing = await db.listing.findUnique({ where: { id: listingId } });
   if (!listing) throw new ReportError("not_found");
@@ -96,6 +101,7 @@ export async function reportUser(
   targetUserId: string,
   input: unknown,
 ): Promise<ReportDTO> {
+  if (await isUserSuspended(reporterId)) throw new ReportError("suspended");
   const data = reportInputSchema.parse(input);
   if (reporterId === targetUserId) throw new ReportError("own_target");
   await assertUserExists(targetUserId);

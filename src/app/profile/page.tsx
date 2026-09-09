@@ -11,6 +11,7 @@ import { ProfileForm } from "./ProfileForm";
 export default async function ProfilePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
+  if (user.suspendedAt) redirect("/suspended");
 
   const [profile, reputation] = await Promise.all([
     getProfileForUser(user.id),

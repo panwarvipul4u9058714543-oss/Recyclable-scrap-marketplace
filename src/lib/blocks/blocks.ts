@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
+import { isUserSuspended } from "@/lib/moderation/moderation";
 
-export type BlockErrorCode = "self_block" | "not_found";
+export type BlockErrorCode = "self_block" | "not_found" | "suspended";
 
 export class BlockError extends Error {
   constructor(public readonly code: BlockErrorCode) {
@@ -20,6 +21,7 @@ export async function blockUser(
   blockedId: string,
 ): Promise<void> {
   if (blockerId === blockedId) throw new BlockError("self_block");
+  if (await isUserSuspended(blockerId)) throw new BlockError("suspended");
   const target = await db.user.findUnique({ where: { id: blockedId } });
   if (!target) throw new BlockError("not_found");
 

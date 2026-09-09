@@ -113,6 +113,18 @@ adds trust, privacy and moderation. Built in steps:
    After a **COMPLETED** or **FAILED** connection, either party can submit a
    1–5 **rating** with an optional comment; the counterparty's public
    profile shows the average and count alongside their reputation summary.
+4. **Operator moderation and account suspension** ✅ — operators (users
+   with the `isAdmin` flag) get a `/moderation` queue that lists every
+   `OPEN` report with target context (listing title, reporter phone), and
+   can **resolve** or **dismiss** each report with an optional review note.
+   From the same queue an operator can **suspend** the reported account
+   with a short reason. A suspended user can still browse the marketplace
+   but every write path (create/edit a listing, express interest, chat,
+   report, block, rate, edit profile) refuses with a `suspended` (403)
+   domain error, and their `ACTIVE` listings drop out of `/nearby`
+   discovery. Suspended users are redirected from their dashboard to a
+   `/suspended` notice that shows the operator's reason; the account can
+   be reinstated from the same moderation queue.
 
 ### Buyer–seller connections
 

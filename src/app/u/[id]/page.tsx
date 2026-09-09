@@ -45,6 +45,19 @@ export default async function PublicProfilePage({
       <p style={{ color: "#9e9e9e", marginTop: "-0.4rem" }}>
         Member since {memberSinceLabel}
       </p>
+      {profile.isSuspended && (
+        <p
+          role="status"
+          style={{
+            padding: "0.5rem 0.8rem",
+            border: "1px solid #c62828",
+            borderRadius: 6,
+            background: "#3a1010",
+          }}
+        >
+          This account is currently suspended by an operator.
+        </p>
+      )}
 
       {profile.bio && (
         <section style={{ margin: "0.5rem 0 1rem" }}>

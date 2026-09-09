@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
+  ProfileError,
   getProfileForUser,
   updateProfileForUser,
 } from "@/lib/profiles/profiles";
@@ -31,6 +32,9 @@ export async function PATCH(request: Request) {
         { error: "invalid_profile", details: err.flatten() },
         { status: 400 },
       );
+    }
+    if (err instanceof ProfileError) {
+      return NextResponse.json({ error: err.code }, { status: 403 });
     }
     throw err;
   }

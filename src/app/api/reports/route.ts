@@ -19,6 +19,7 @@ const STATUS: Record<string, number> = {
   not_found: 404,
   own_target: 422,
   invalid_status: 409,
+  suspended: 403,
 };
 
 export async function POST(request: Request) {
