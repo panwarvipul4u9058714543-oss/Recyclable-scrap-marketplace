@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { COLLECTOR_ROLES, ROLE_LABELS } from "@/lib/roles";
+import { listNotificationsForCollector } from "@/lib/routes/notifications";
 import { RouteBrowser } from "./RouteBrowser";
+import { RecentMatches } from "./RecentMatches";
 
 export default async function RoutePage() {
   const user = await getCurrentUser();
@@ -54,6 +56,26 @@ export default async function RoutePage() {
         results while behind the wheel.
       </p>
       <RouteBrowser />
+      <RecentMatches
+        notifications={(await listNotificationsForCollector(user.id)).map(
+          (n) => ({
+            id: n.id,
+            seenAt: n.seenAt ? n.seenAt.toISOString() : null,
+            createdAt: n.createdAt.toISOString(),
+            listing: {
+              id: n.listing.id,
+              title: n.listing.title,
+              materialCategory: n.listing.materialCategory,
+              quantityMin: n.listing.quantityMin,
+              quantityMax: n.listing.quantityMax,
+              quantityUnit: n.listing.quantityUnit,
+              locality: n.listing.locality,
+              availability: n.listing.availability,
+            },
+          }),
+        )}
+        notifyOnRouteMatch={user.notifyOnRouteMatch}
+      />
     </main>
   );
 }

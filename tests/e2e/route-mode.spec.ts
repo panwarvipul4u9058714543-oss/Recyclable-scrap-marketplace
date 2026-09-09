@@ -70,7 +70,7 @@ test("a collector plans a route, finds an along-route listing and expresses inte
 
   // 3) The along-route listing appears in the route matches with a detour
   //    figure, and the collector can express interest from the same list.
-  const matches = page.getByRole("region", { name: "Route matches" });
+  const matches = page.getByRole("region", { name: "Route matches", exact: true });
   await expect(matches).toContainText("Along-route PET bottles");
   await expect(matches).toContainText(/\+[\d.]+ km detour/);
 

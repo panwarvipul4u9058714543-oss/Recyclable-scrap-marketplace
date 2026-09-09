@@ -21,29 +21,31 @@ datasource db {
 // harassment, fraud or unsafe behaviour — a suspended user can sign in but
 // service-level writes are refused and their listings drop out of discovery.
 model User {
-  id                String    @id @default(cuid())
-  phone             String    @unique
-  phoneVerifiedAt   DateTime?
-  isAdmin           Boolean   @default(false)
-  suspendedAt       DateTime?
-  suspensionReason  String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  phone                String    @unique
+  phoneVerifiedAt      DateTime?
+  isAdmin              Boolean   @default(false)
+  suspendedAt          DateTime?
+  suspensionReason     String?
+  notifyOnRouteMatch   Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  roles              UserRole[]
-  sessions           Session[]
-  listings           Listing[]
-  interests          Interest[]   @relation("CollectorInterests")
-  buyerConnections   Connection[] @relation("BuyerConnections")
-  sellerConnections  Connection[] @relation("SellerConnections")
-  profile            Profile?
-  reportsFiled       Report[]     @relation("ReportsFiled")
-  reportsReviewed    Report[]     @relation("ReportsReviewed")
-  blocksIssued       Block[]      @relation("BlocksIssued")
-  blocksReceived     Block[]      @relation("BlocksReceived")
-  ratingsGiven       Rating[]     @relation("RatingsGiven")
-  ratingsReceived    Rating[]     @relation("RatingsReceived")
-  routes             Route[]
+  roles               UserRole[]
+  sessions            Session[]
+  listings            Listing[]
+  interests           Interest[]          @relation("CollectorInterests")
+  buyerConnections    Connection[]        @relation("BuyerConnections")
+  sellerConnections   Connection[]        @relation("SellerConnections")
+  profile             Profile?
+  reportsFiled        Report[]            @relation("ReportsFiled")
+  reportsReviewed     Report[]            @relation("ReportsReviewed")
+  blocksIssued        Block[]             @relation("BlocksIssued")
+  blocksReceived      Block[]             @relation("BlocksReceived")
+  ratingsGiven        Rating[]            @relation("RatingsGiven")
+  ratingsReceived     Rating[]            @relation("RatingsReceived")
+  routes              Route[]
+  routeNotifications  RouteNotification[]
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -137,9 +139,10 @@ model Listing {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  seller      User         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  interests   Interest[]
-  connections Connection[]
+  seller             User                @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  interests          Interest[]
+  connections        Connection[]
+  routeNotifications RouteNotification[]
 
   @@index([sellerId])
   @@index([status])
@@ -292,10 +295,34 @@ model Route {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  collector User @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  collector          User                @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  routeNotifications RouteNotification[]
 
   @@index([collectorId])
   @@index([status])
+}
+
+// A notification that a newly-created Listing matches an ACTIVE Route the
+// collector opened. Fanned out at listing-create time so the notification is
+// only ever seen by collectors whose route filters (materials, minQuantity,
+// maxDetour) actually match — no batch spam. Unique on (collectorId,
+// listingId) so re-running the fan-out never produces duplicates. `seenAt`
+// stamps when the collector opens the notification.
+model RouteNotification {
+  id          String    @id @default(cuid())
+  collectorId String
+  routeId     String
+  listingId   String
+  seenAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  collector User    @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  route     Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([collectorId, listingId])
+  @@index([collectorId])
+  @@index([routeId])
 }
 
 // A chat message on a connection. Either party may post while the connection

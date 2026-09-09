@@ -6,6 +6,8 @@ import {
   computeReputation,
   getProfileForUser,
 } from "@/lib/profiles/profiles";
+import { COLLECTOR_ROLES } from "@/lib/roles";
+import { NotificationPreferences } from "./NotificationPreferences";
 import { ProfileForm } from "./ProfileForm";
 
 export default async function ProfilePage() {
@@ -51,6 +53,12 @@ export default async function ProfilePage() {
       </section>
 
       <ProfileForm roles={user.roles} initial={profile} />
+
+      {user.roles.some((r) => COLLECTOR_ROLES.includes(r)) && (
+        <NotificationPreferences
+          initialNotifyOnRouteMatch={user.notifyOnRouteMatch}
+        />
+      )}
     </main>
   );
 }

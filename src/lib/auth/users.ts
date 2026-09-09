@@ -11,6 +11,7 @@ export interface UserWithRoles {
   isAdmin: boolean;
   suspendedAt: Date | null;
   suspensionReason: string | null;
+  notifyOnRouteMatch: boolean;
 }
 
 /**
@@ -65,5 +66,6 @@ export async function getUserWithRoles(
     isAdmin: user.isAdmin,
     suspendedAt: user.suspendedAt,
     suspensionReason: user.suspensionReason,
+    notifyOnRouteMatch: user.notifyOnRouteMatch,
   };
 }

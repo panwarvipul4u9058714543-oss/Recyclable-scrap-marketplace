@@ -150,6 +150,19 @@ already making, so travel is not wasted. Built in steps:
    you drive, review matches after you park* safety notice and is
    deliberately submit-once (no live tracker while driving). Dashboard now
    shows a *Plan a route* CTA for collector, dealer and recycler roles.
+3. **Route match notifications with per-user preferences** ✅ — when a new
+   listing is created, `fanOutForNewListing` inserts a `RouteNotification`
+   for every collector whose `ACTIVE` route matches that specific listing
+   under the same filter rules (materials, minQuantity + unit, maxDetour) and
+   visibility rules (blocks either way, no self-listings, opted-out
+   collectors excluded). Unique on `(collectorId, listingId)` so repeat
+   fan-outs are no-ops. Collectors see a *Recent route matches* section on
+   `/route` with a NEW badge, unseen count and *Mark as seen* button, and
+   can toggle the `notifyOnRouteMatch` preference from a *Notification
+   preferences* section on `/profile`. Exposed at
+   `GET /api/route-notifications`,
+   `POST /api/route-notifications/[id]/seen` and
+   `PATCH /api/preferences/notifications`.
 
 ### Buyer–seller connections
 
