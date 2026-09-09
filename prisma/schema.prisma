@@ -43,6 +43,7 @@ model User {
   blocksReceived     Block[]      @relation("BlocksReceived")
   ratingsGiven       Rating[]     @relation("RatingsGiven")
   ratingsReceived    Rating[]     @relation("RatingsReceived")
+  routes             Route[]
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -263,6 +264,38 @@ model Rating {
   @@unique([connectionId, raterId])
   @@index([rateeId])
   @@index([connectionId])
+}
+
+// A collector's route mode session. The collector supplies an origin, a
+// destination and a travel window; the marketplace uses the row to match
+// active listings that fall along the trip within an acceptable detour.
+// Route mode is deliberately submit-once (not a live tracker) — the collector
+// sets it up before driving and reviews matches after arrival. Only one
+// route per collector is ACTIVE at a time; ending the route stamps
+// `endedAt` and moves it to a terminal state. `acceptedMaterials` is a
+// JSON-encoded array of MaterialCategory values (empty = accept any).
+model Route {
+  id                String    @id @default(cuid())
+  collectorId       String
+  originLatitude    Float
+  originLongitude   Float
+  destLatitude      Float
+  destLongitude     Float
+  departAt          DateTime
+  arriveByAt        DateTime
+  acceptedMaterials String // JSON-encoded array of MaterialCategory ("[]" = any)
+  maxDetourKm       Float
+  minQuantity       Float?
+  minQuantityUnit   String? // required when minQuantity is set
+  status            String    @default("ACTIVE") // ACTIVE | ENDED
+  endedAt           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  collector User @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+
+  @@index([collectorId])
+  @@index([status])
 }
 
 // A chat message on a connection. Either party may post while the connection

@@ -126,6 +126,21 @@ adds trust, privacy and moderation. Built in steps:
    `/suspended` notice that shows the operator's reason; the account can
    be reinstated from the same moderation queue.
 
+Issue [#5](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/5)
+adds collector route mode — matching listings along a trip the collector is
+already making, so travel is not wasted. Built in steps:
+
+1. **Route model and matching service** ✅ — a collector-type user opens a
+   `Route` with an origin, destination and travel window plus filters
+   (accepted materials, max detour, minimum quantity + unit). At most one
+   `ACTIVE` route per collector; starting a new route ends any prior active
+   one. `findMatchingListings` ranks candidates by *practical detour*
+   (`distance(origin→listing) + distance(listing→dest) − distance(origin→dest)`,
+   clamped to zero) and applies the same visibility rules as `/nearby`:
+   `ACTIVE` listings only, seller not suspended, no blocks either way, no
+   self-listings. Exposed at `GET`/`POST /api/routes`,
+   `DELETE /api/routes/[id]`, `GET /api/routes/[id]/matches`.
+
 ### Buyer–seller connections
 
 - A collector taps *I'm interested* on a nearby listing (`/nearby`) to record
