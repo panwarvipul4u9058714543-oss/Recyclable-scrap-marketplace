@@ -140,6 +140,16 @@ already making, so travel is not wasted. Built in steps:
    `ACTIVE` listings only, seller not suspended, no blocks either way, no
    self-listings. Exposed at `GET`/`POST /api/routes`,
    `DELETE /api/routes/[id]`, `GET /api/routes/[id]/matches`.
+2. **Route mode UI + connection lifecycle** ✅ — a collector-type user opens
+   `/route`, fills in origin, destination, travel window, accepted materials,
+   maximum detour and (optionally) a minimum quantity + unit, and submits
+   once to see matching listings ranked by detour. Each match has an
+   *I&apos;m interested* button that reuses the existing express-interest API
+   — a match therefore feeds straight into the existing reservation, chat and
+   contact-reveal flow. The page carries a prominent *set your route before
+   you drive, review matches after you park* safety notice and is
+   deliberately submit-once (no live tracker while driving). Dashboard now
+   shows a *Plan a route* CTA for collector, dealer and recycler roles.
 
 ### Buyer–seller connections
 

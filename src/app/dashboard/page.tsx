@@ -74,6 +74,11 @@ export default async function DashboardPage() {
                 Browse nearby listings
               </Link>
             )}
+            {canBrowse && (
+              <Link href="/route" style={ctaStyle}>
+                Plan a route
+              </Link>
+            )}
             <Link href="/connections" style={ctaStyle}>
               Your connections
             </Link>
