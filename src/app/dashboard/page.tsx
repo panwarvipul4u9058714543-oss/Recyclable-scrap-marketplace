@@ -76,13 +76,17 @@ export default async function DashboardPage() {
             <Link href="/connections" style={ctaStyle}>
               Your connections
             </Link>
+            <Link href="/profile" style={ctaStyle}>
+              Edit your profile
+            </Link>
           </div>
         </section>
       )}
 
       {!canSell && !canBrowse && (
         <p style={{ marginTop: "1.5rem", color: "#9e9e9e" }}>
-          Pick a role to unlock the workflows that fit it.
+          Pick a role to unlock the workflows that fit it.{" "}
+          <Link href="/profile">Edit your profile</Link>.
         </p>
       )}
     </main>

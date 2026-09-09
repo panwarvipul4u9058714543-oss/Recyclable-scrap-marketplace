@@ -27,6 +27,9 @@ export default async function ConnectionDetailPage({ params }: Params) {
   }
 
   const viewerIsSeller = detail.sellerId === user.id;
+  const counterpartyId = viewerIsSeller
+    ? detail.collectorId
+    : detail.sellerId;
 
   return (
     <main>
@@ -38,7 +41,8 @@ export default async function ConnectionDetailPage({ params }: Params) {
         Locality: {detail.locality}{" "}
         {viewerIsSeller
           ? "· You are the seller."
-          : "· You are the selected buyer."}
+          : "· You are the selected buyer."}{" "}
+        · <Link href={`/u/${counterpartyId}`}>View their profile</Link>
       </p>
 
       <ConnectionChat

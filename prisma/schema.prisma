@@ -3,7 +3,8 @@
 // phone verification, and sessions. Step 3 adds scrap listings. Step 4 adds
 // coordinates for nearby-discovery filters. Issue #3 step 1 adds the
 // buyer–seller interest/connection primitives; steps 2–3 add reservation
-// expiry, in-app chat and mutual contact-reveal timestamps.
+// expiry, in-app chat and mutual contact-reveal timestamps. Issue #4 step 2
+// adds per-user Profile with identity, organisation and service-area fields.
 
 generator client {
   provider = "prisma-client-js"
@@ -28,6 +29,31 @@ model User {
   interests          Interest[]   @relation("CollectorInterests")
   buyerConnections   Connection[] @relation("BuyerConnections")
   sellerConnections  Connection[] @relation("SellerConnections")
+  profile            Profile?
+}
+
+// A user's public-facing profile. Every field is optional so the profile can
+// grow over time; the row itself is created on first update. `acceptedMaterials`
+// is a JSON-encoded array of MaterialCategory values (SQLite has no native
+// array type) and `serviceAreaRadiusKm` / `serviceAreaLocality` describe how
+// far a collector-type role will travel. `organisationName` and `registrationId`
+// carry the role-appropriate organisation or verification details for
+// dealers, businesses and recyclers. Reputation is not stored — it is
+// aggregated from Connection at read time.
+model Profile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  displayName         String?
+  bio                 String?
+  organisationName    String?
+  registrationId      String?
+  serviceAreaLocality String?
+  serviceAreaRadiusKm Float?
+  acceptedMaterials   String? // JSON-encoded array of MaterialCategory
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // One role a user has taken on. A user may hold several roles at once

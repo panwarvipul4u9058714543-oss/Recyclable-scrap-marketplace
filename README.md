@@ -93,6 +93,16 @@ adds trust, privacy and moderation. Built in steps:
    with a targeted error. Restricted categories such as **e-waste and
    batteries** show an additional verification notice on top of the standard
    safety warning.
+2. **Profiles — identity, organisation, service area and reputation** ✅ —
+   every user has an editable profile at `/profile` with a display name and
+   short bio; collector-type roles (collector / dealer / recycler) can add a
+   **service area**, **travel radius** and the **materials they accept**;
+   business, dealer and recycler roles can add an **organisation name** and
+   **registration / licence ID** for role-appropriate verification. Reputation
+   is aggregated from completed / failed / cancelled connections and shown on
+   the user's own profile and on their **public profile page** at
+   `/u/[id]`, which never exposes phone numbers or exact addresses. Connection
+   pages link to each counterparty's public profile.
 
 ### Buyer–seller connections
 

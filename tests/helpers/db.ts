@@ -11,6 +11,7 @@ export async function resetDb() {
   await db.listing.deleteMany();
   await db.session.deleteMany();
   await db.userRole.deleteMany();
+  await db.profile.deleteMany();
   await db.phoneVerification.deleteMany();
   await db.user.deleteMany();
 }
