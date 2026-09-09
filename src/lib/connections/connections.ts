@@ -1,21 +1,28 @@
-import type { Connection, Interest } from "@prisma/client";
+import type { Connection, Interest, Message } from "@prisma/client";
 import { db } from "@/lib/db";
 import { COLLECTOR_ROLES } from "@/lib/roles";
 
-/** Connection lifecycle. Step 1 only creates SELECTED rows; later steps add
- * RESERVED, chat/contact reveal, and the terminal COMPLETED/CANCELLED/
- * FAILED/EXPIRED states. */
-export const CONNECTION_STATUSES = ["SELECTED"] as const;
+/** Connection lifecycle. Step 1 introduced the row; steps 2–3 add reservation
+ * expiry and chat/mutual-contact-reveal. Step 4 will add the terminal
+ * COMPLETED / FAILED outcomes. */
+export const CONNECTION_STATUSES = [
+  "RESERVED",
+  "CANCELLED",
+  "EXPIRED",
+] as const;
 export type ConnectionStatus = (typeof CONNECTION_STATUSES)[number];
 
 /**
  * A connection is considered "open" (still holds the listing) while its
- * status is one of these. Kept as a set so later steps can add
- * RESERVED / CONFIRMED without touching the "already selected" guard.
+ * status is one of these. Kept as a list so later steps can add more open
+ * states (e.g. CONFIRMED) without touching the "already reserved" guard.
  */
 export const OPEN_CONNECTION_STATUSES: readonly ConnectionStatus[] = [
-  "SELECTED",
+  "RESERVED",
 ];
+
+/** How long a reservation lasts before it auto-expires. */
+export const RESERVATION_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 export type ConnectionErrorCode =
   | "not_found"
@@ -24,7 +31,9 @@ export type ConnectionErrorCode =
   | "not_a_collector"
   | "not_interested"
   | "already_selected"
-  | "own_listing";
+  | "own_listing"
+  | "not_reserved"
+  | "empty_message";
 
 /** A domain error the API layer maps to an HTTP status. */
 export class ConnectionError extends Error {
@@ -48,8 +57,35 @@ export interface ConnectionDTO {
   sellerId: string;
   collectorId: string;
   status: ConnectionStatus;
+  expiresAt: Date;
+  sellerRevealedAt: Date | null;
+  collectorRevealedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface MessageDTO {
+  id: string;
+  connectionId: string;
+  senderId: string;
+  body: string;
+  createdAt: Date;
+}
+
+/** The connection plus revealed contact when both parties have revealed. */
+export interface ConnectionDetailDTO extends ConnectionDTO {
+  sellerPhone: string;
+  collectorPhone: string;
+  listingTitle: string;
+  locality: string;
+  /** Exact pickup coordinates — only populated once both parties have revealed. */
+  pickup: { latitude: number; longitude: number } | null;
+  /** True when the current caller has revealed. */
+  youRevealed: boolean;
+  /** True when the other party has revealed. */
+  counterpartyRevealed: boolean;
+  /** True when both parties have revealed; contact + pickup are visible. */
+  contactRevealed: boolean;
 }
 
 function connectionToDTO(row: Connection): ConnectionDTO {
@@ -59,6 +95,9 @@ function connectionToDTO(row: Connection): ConnectionDTO {
     sellerId: row.sellerId,
     collectorId: row.collectorId,
     status: row.status as ConnectionStatus,
+    expiresAt: row.expiresAt,
+    sellerRevealedAt: row.sellerRevealedAt,
+    collectorRevealedAt: row.collectorRevealedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -72,6 +111,16 @@ function interestToDTO(
     listingId: row.listingId,
     collectorId: row.collectorId,
     collectorPhone: row.collector.phone,
+    createdAt: row.createdAt,
+  };
+}
+
+function messageToDTO(row: Message): MessageDTO {
+  return {
+    id: row.id,
+    connectionId: row.connectionId,
+    senderId: row.senderId,
+    body: row.body,
     createdAt: row.createdAt,
   };
 }
@@ -91,6 +140,54 @@ async function assertCollectorRole(userId: string) {
 }
 
 /**
+ * Transition a RESERVED connection whose expiresAt has passed to EXPIRED and
+ * return the updated row. Read paths call this so a stale reservation never
+ * leaks as "still open" simply because no timer fired.
+ */
+async function expireIfDue(row: Connection): Promise<Connection> {
+  if (row.status === "RESERVED" && row.expiresAt.getTime() <= Date.now()) {
+    return db.connection.update({
+      where: { id: row.id },
+      data: { status: "EXPIRED" },
+    });
+  }
+  return row;
+}
+
+/**
+ * Return the id of the currently RESERVED connection for a listing, or null.
+ * Any RESERVED-but-past-expiry row is expired first so the answer reflects
+ * the live state.
+ */
+async function findActiveReservation(listingId: string) {
+  const row = await db.connection.findFirst({
+    where: { listingId, status: "RESERVED" },
+  });
+  if (!row) return null;
+  const fresh = await expireIfDue(row);
+  return fresh.status === "RESERVED" ? fresh : null;
+}
+
+/**
+ * Return the set of listing ids that currently hold an active reservation.
+ * Used by discovery to hide reserved listings from other collectors.
+ */
+export async function listingIdsWithActiveReservation(
+  listingIds: string[],
+): Promise<Set<string>> {
+  if (listingIds.length === 0) return new Set();
+  const rows = await db.connection.findMany({
+    where: { listingId: { in: listingIds }, status: "RESERVED" },
+  });
+  const active = new Set<string>();
+  for (const row of rows) {
+    const fresh = await expireIfDue(row);
+    if (fresh.status === "RESERVED") active.add(fresh.listingId);
+  }
+  return active;
+}
+
+/**
  * Record a collector's interest in an active listing. Idempotent — if the
  * collector has already expressed interest the existing row is returned.
  */
@@ -105,6 +202,8 @@ export async function expressInterest(
   if (listing.status !== "ACTIVE") {
     throw new ConnectionError("listing_not_active");
   }
+  const reserved = await findActiveReservation(listingId);
+  if (reserved) throw new ConnectionError("already_selected");
   await assertCollectorRole(collectorId);
 
   const row = await db.interest.upsert({
@@ -145,9 +244,9 @@ export async function listListingInterests(
 }
 
 /**
- * Create a SELECTED connection between the seller's listing and one of the
- * collectors who has already expressed interest. At most one non-terminal
- * connection is allowed per listing.
+ * Reserve the listing for one of the collectors who has expressed interest.
+ * Creates a Connection in RESERVED state with `expiresAt = now + TTL`; at
+ * most one non-terminal connection is allowed per listing.
  */
 export async function selectBuyer(
   sellerId: string,
@@ -165,13 +264,17 @@ export async function selectBuyer(
   });
   if (!interest) throw new ConnectionError("not_interested");
 
-  const openConnection = await db.connection.findFirst({
-    where: { listingId, status: { in: [...OPEN_CONNECTION_STATUSES] } },
-  });
-  if (openConnection) throw new ConnectionError("already_selected");
+  const reserved = await findActiveReservation(listingId);
+  if (reserved) throw new ConnectionError("already_selected");
 
   const row = await db.connection.create({
-    data: { listingId, sellerId, collectorId, status: "SELECTED" },
+    data: {
+      listingId,
+      sellerId,
+      collectorId,
+      status: "RESERVED",
+      expiresAt: new Date(Date.now() + RESERVATION_TTL_MS),
+    },
   });
   return connectionToDTO(row);
 }
@@ -184,7 +287,8 @@ export async function listSellerConnections(
     where: { sellerId },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(connectionToDTO);
+  const fresh = await Promise.all(rows.map(expireIfDue));
+  return fresh.map(connectionToDTO);
 }
 
 /** All connections where the caller is the selected buyer, newest first. */
@@ -195,7 +299,17 @@ export async function listCollectorConnections(
     where: { collectorId },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(connectionToDTO);
+  const fresh = await Promise.all(rows.map(expireIfDue));
+  return fresh.map(connectionToDTO);
+}
+
+async function loadForParty(userId: string, connectionId: string) {
+  const row = await db.connection.findUnique({ where: { id: connectionId } });
+  if (!row) throw new ConnectionError("not_found");
+  if (row.sellerId !== userId && row.collectorId !== userId) {
+    throw new ConnectionError("not_found");
+  }
+  return expireIfDue(row);
 }
 
 /**
@@ -206,10 +320,145 @@ export async function getConnectionForParty(
   userId: string,
   connectionId: string,
 ): Promise<ConnectionDTO> {
-  const row = await db.connection.findUnique({ where: { id: connectionId } });
-  if (!row) throw new ConnectionError("not_found");
-  if (row.sellerId !== userId && row.collectorId !== userId) {
-    throw new ConnectionError("not_found");
-  }
-  return connectionToDTO(row);
+  return connectionToDTO(await loadForParty(userId, connectionId));
+}
+
+/**
+ * Fetch the full connection view for a party: participants' phones, the
+ * listing's title + locality, whether the caller/other has revealed, and — if
+ * both have — the exact pickup coordinates.
+ */
+export async function getConnectionDetail(
+  userId: string,
+  connectionId: string,
+): Promise<ConnectionDetailDTO> {
+  const row = await loadForParty(userId, connectionId);
+  const [seller, collector, listing] = await Promise.all([
+    db.user.findUnique({
+      where: { id: row.sellerId },
+      select: { phone: true },
+    }),
+    db.user.findUnique({
+      where: { id: row.collectorId },
+      select: { phone: true },
+    }),
+    db.listing.findUnique({
+      where: { id: row.listingId },
+      select: { title: true, locality: true, latitude: true, longitude: true },
+    }),
+  ]);
+  if (!seller || !collector || !listing) throw new ConnectionError("not_found");
+
+  const contactRevealed =
+    row.sellerRevealedAt !== null && row.collectorRevealedAt !== null;
+  const youRevealed = isSeller(row, userId)
+    ? row.sellerRevealedAt !== null
+    : row.collectorRevealedAt !== null;
+  const counterpartyRevealed = isSeller(row, userId)
+    ? row.collectorRevealedAt !== null
+    : row.sellerRevealedAt !== null;
+
+  return {
+    ...connectionToDTO(row),
+    // Phones are only exposed when both parties have revealed.
+    sellerPhone: contactRevealed ? seller.phone : maskPhone(seller.phone),
+    collectorPhone: contactRevealed
+      ? collector.phone
+      : maskPhone(collector.phone),
+    listingTitle: listing.title,
+    locality: listing.locality,
+    pickup: contactRevealed
+      ? { latitude: listing.latitude, longitude: listing.longitude }
+      : null,
+    youRevealed,
+    counterpartyRevealed,
+    contactRevealed,
+  };
+}
+
+function isSeller(row: Connection, userId: string): boolean {
+  return row.sellerId === userId;
+}
+
+// Show only the last four digits of a phone number so users can distinguish
+// their counterparty without seeing their full contact details.
+function maskPhone(phone: string): string {
+  if (phone.length <= 4) return "••••";
+  return "•••• " + phone.slice(-4);
+}
+
+/**
+ * Cancel a RESERVED connection. Either party may call this; the connection
+ * moves to CANCELLED (terminal) and the listing becomes available for a new
+ * selection. Cancelling a non-reserved connection is rejected.
+ */
+export async function cancelConnection(
+  userId: string,
+  connectionId: string,
+): Promise<ConnectionDTO> {
+  const row = await loadForParty(userId, connectionId);
+  if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
+  const updated = await db.connection.update({
+    where: { id: row.id },
+    data: { status: "CANCELLED" },
+  });
+  return connectionToDTO(updated);
+}
+
+/**
+ * Mark the caller's side of the mutual contact-reveal as revealed. Once both
+ * parties have revealed, `getConnectionDetail` exposes exact phones and the
+ * pickup coordinates. Reveal is only meaningful while RESERVED. Repeat calls
+ * are idempotent — the timestamp is preserved.
+ */
+export async function revealContact(
+  userId: string,
+  connectionId: string,
+): Promise<ConnectionDTO> {
+  const row = await loadForParty(userId, connectionId);
+  if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
+
+  const alreadyRevealed = isSeller(row, userId)
+    ? row.sellerRevealedAt !== null
+    : row.collectorRevealedAt !== null;
+  if (alreadyRevealed) return connectionToDTO(row);
+
+  const patch = isSeller(row, userId)
+    ? { sellerRevealedAt: new Date() }
+    : { collectorRevealedAt: new Date() };
+  const updated = await db.connection.update({
+    where: { id: row.id },
+    data: patch,
+  });
+  return connectionToDTO(updated);
+}
+
+/** Post a chat message on a RESERVED connection. Empty messages are rejected. */
+export async function postMessage(
+  userId: string,
+  connectionId: string,
+  body: string,
+): Promise<MessageDTO> {
+  const trimmed = body.trim();
+  if (trimmed.length === 0) throw new ConnectionError("empty_message");
+  const row = await loadForParty(userId, connectionId);
+  if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
+
+  const message = await db.message.create({
+    data: { connectionId: row.id, senderId: userId, body: trimmed },
+  });
+  return messageToDTO(message);
+}
+
+/** List all messages on a connection the caller is a party to, oldest first. */
+export async function listMessages(
+  userId: string,
+  connectionId: string,
+): Promise<MessageDTO[]> {
+  await loadForParty(userId, connectionId);
+  const rows = await db.message.findMany({
+    where: { connectionId },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map(messageToDTO);
 }

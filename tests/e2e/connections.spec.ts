@@ -62,66 +62,98 @@ async function createListing(page: Page, title: string) {
   await expect(page).toHaveURL(/\/listings$/);
 }
 
-test("a collector expresses interest and the seller selects them", async ({
+test("interest → selection → chat → mutual reveal → cancel", async ({
   page,
 }) => {
   // 1) Seller registers and posts a listing.
-  const sellerPhone = await register(page, ["Household"], 10);
+  const sellerPhone = await register(page, ["Household"], 20);
   await createListing(page, "Old newspapers");
 
-  // 2) Seller signs out.
+  // 2) Seller signs out; collector registers and expresses interest.
   await page.goto("/dashboard");
   await logout(page);
-
-  // 3) Collector registers and expresses interest from /nearby.
-  const collectorPhone = await register(page, ["Collector (Kabadiwala)"], 11);
+  const collectorPhone = await register(page, ["Collector (Kabadiwala)"], 21);
   await page.getByRole("link", { name: "Browse nearby listings" }).click();
   await page.getByLabel("Latitude").fill("12.9352");
   await page.getByLabel("Longitude").fill("77.6245");
   await page.getByRole("button", { name: "Show nearby listings" }).click();
-
   const results = page.getByRole("region", { name: "Search results" });
   await expect(results).toContainText("Old newspapers");
   await results
     .getByRole("button", { name: "I'm interested" })
     .first()
     .click();
-  await expect(
-    results.getByRole("button", { name: "Withdraw interest" }),
-  ).toBeVisible();
 
-  // The collector's own connections page shows no accepted connection yet.
-  await page.goto("/connections");
-  await expect(page.getByText("No seller has selected you yet.")).toBeVisible();
-
-  // 4) Collector signs out; seller signs back in via the same registered phone.
+  // 3) Seller signs back in and selects the interested buyer.
   await page.goto("/dashboard");
   await logout(page);
   await signBackIn(page, sellerPhone);
-
-  // 5) Seller sees the interested buyer and selects them.
   await page.getByRole("link", { name: "Manage your listings" }).click();
   const card = page.locator("li", { hasText: "Old newspapers" });
   await expect(card.getByText("Interested buyers")).toBeVisible();
-  await expect(card.getByText(collectorPhone)).toBeVisible();
   await card.getByRole("button", { name: "Select" }).click();
+  await expect(card.getByText(/Reserved for/i)).toBeVisible();
 
-  await expect(card.getByText("Selected buyer:")).toBeVisible();
-  await expect(card.getByText(collectorPhone)).toBeVisible();
-
-  // 6) The seller's connections page reflects the pick.
+  // 4) Seller opens the connection detail, posts a message and reveals
+  //    their contact.
   await page.goto("/connections");
-  const sellerSection = page.getByRole("region", { name: "As a seller" });
-  await expect(sellerSection).toContainText("Old newspapers");
-  await expect(sellerSection).toContainText(collectorPhone);
+  await page
+    .getByRole("region", { name: "As a seller" })
+    .getByRole("link", { name: "Old newspapers" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Old newspapers" })).toBeVisible();
+  const contact = page.getByRole("region", { name: "Contact" });
+  await expect(contact).toContainText(
+    "Exact contact details are hidden until both of you reveal.",
+  );
 
-  // 7) Sign back into the collector and confirm they see the connection too.
+  await page.getByLabel("Message").fill("Hi, when can you come by?");
+  await page.getByRole("button", { name: "Send" }).click();
+  const chat = page.getByRole("region", { name: "Chat" });
+  await expect(chat).toContainText("Hi, when can you come by?");
+
+  await contact.getByRole("button", { name: "Reveal my contact" }).click();
+  await expect(contact).toContainText(/revealed/i);
+
+  // 5) Collector signs in, sees the message, replies, and reveals — both
+  //    contacts and pickup coordinates become visible.
   await page.goto("/dashboard");
   await logout(page);
   await signBackIn(page, collectorPhone);
-
   await page.getByRole("link", { name: "Your connections" }).click();
-  const buyerSection = page.getByRole("region", { name: "As a buyer" });
-  await expect(buyerSection).toContainText("Old newspapers");
-  await expect(buyerSection).toContainText(sellerPhone);
+  await page
+    .getByRole("region", { name: "As a buyer" })
+    .getByRole("link", { name: "Old newspapers" })
+    .click();
+
+  await expect(chat).toContainText("Hi, when can you come by?");
+  await page.getByLabel("Message").fill("Tomorrow at 10 works.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(chat).toContainText("Tomorrow at 10 works.");
+
+  await contact.getByRole("button", { name: "Reveal my contact" }).click();
+  // Once both reveal, the seller's phone appears as a tel: link and the
+  // pickup coordinates are visible to the buyer.
+  await expect(contact.getByRole("link", { name: sellerPhone })).toBeVisible();
+  await expect(contact).toContainText(/Pickup coordinates:/i);
+
+  // 6) The buyer cancels the reservation; posting new messages is now
+  //    blocked and the listing reappears on /nearby.
+  page.on("dialog", (d) => d.accept());
+  await page
+    .getByRole("region", { name: "Reservation" })
+    .getByRole("button", { name: "Cancel reservation" })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Reservation" }),
+  ).toContainText("CANCELLED");
+  await expect(chat).toContainText(/no new messages can be sent/i);
+
+  await page.goto("/nearby");
+  await page.getByLabel("Latitude").fill("12.9352");
+  await page.getByLabel("Longitude").fill("77.6245");
+  await page.getByRole("button", { name: "Show nearby listings" }).click();
+  await expect(
+    page.getByRole("region", { name: "Search results" }),
+  ).toContainText("Old newspapers");
 });

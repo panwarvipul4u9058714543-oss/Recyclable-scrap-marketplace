@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getOrCreateUserByPhone, setUserRoles } from "@/lib/auth/users";
+import {
+  expressInterest,
+  selectBuyer,
+} from "@/lib/connections/connections";
 import { createListing, pauseListing } from "@/lib/listings/listings";
 import type { Role } from "@/lib/roles";
 import { discoverNearby, distanceKm } from "@/lib/discovery/discovery";
@@ -213,5 +217,22 @@ describe("discoverNearby", () => {
     await expect(
       discoverNearby(viewer, { near: { latitude: 999, longitude: 0 } }),
     ).rejects.toThrow();
+  });
+
+  it("hides listings that already hold an active reservation", async () => {
+    const seller = await makeUser("+14155550100", ["HOUSEHOLD"]);
+    const alice = await makeUser("+14155550200", ["COLLECTOR"]);
+    const bob = await makeUser("+14155550300", ["COLLECTOR"]);
+
+    const reserved = await seedListing(seller, {
+      title: "Reserved",
+      ...INDIRANAGAR,
+    });
+    await seedListing(seller, { title: "Available", ...INDIRANAGAR });
+    await expressInterest(alice, reserved.id);
+    await selectBuyer(seller, reserved.id, alice);
+
+    const results = await discoverNearby(bob, { near: KORAMANGALA });
+    expect(results.map((r) => r.title)).toEqual(["Available"]);
   });
 });

@@ -68,8 +68,15 @@ steps:
 
 1. **Interest & buyer selection** ✅ — collectors express interest on nearby
    listings; sellers see the list of interested buyers on their own listing
-   card and pick one, creating a `Connection` in `SELECTED` state. Both sides
+   card and pick one, creating a `Connection` in `RESERVED` state. Both sides
    see the resulting connection at `/connections`.
+2. **Reservation lifecycle, chat and mutual contact reveal** ✅ — selection
+   reserves the listing for a fixed TTL (3 days); either party can cancel and
+   an expired reservation transitions to `EXPIRED` on the next read.
+   Cancelled / expired reservations reopen the listing so the seller can pick
+   again. Matched parties chat on `/connections/[id]`, and exact phone
+   numbers + pickup coordinates become visible only after both parties tap
+   *Reveal my contact*.
 
 ### Buyer–seller connections
 
@@ -77,11 +84,17 @@ steps:
   an `Interest`; withdrawing removes it.
 - The seller sees interested buyers on their own listing card at `/listings`
   and taps *Select* to pick one. Selection creates a `Connection` in
-  `SELECTED` state; a listing may hold at most one non-terminal connection at
-  a time (later steps add reservation, chat/contact reveal and the terminal
-  outcomes).
+  `RESERVED` state with an expiry ~3 days out; a listing may hold at most one
+  non-terminal connection at a time.
 - Both parties see the connection at `/connections`, split into *Buyers you
-  selected* and *Listings that selected you*.
+  selected* and *Listings that selected you*, and open `/connections/[id]`
+  for the chat, contact-reveal, and cancel controls.
+- **Mutual contact reveal:** exact phones and pickup coordinates are hidden
+  until both parties tap *Reveal my contact*. Until then each side sees only
+  the last four digits of the other's phone.
+- **Cancel / expire:** either party can cancel a reservation; an unattended
+  reservation auto-transitions to `EXPIRED` on the next read. Either
+  outcome reopens the listing on `/nearby` and unblocks a new selection.
 
 ### Nearby discovery
 

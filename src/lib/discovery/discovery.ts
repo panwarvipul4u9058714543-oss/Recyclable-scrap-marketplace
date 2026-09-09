@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listingIdsWithActiveReservation } from "@/lib/connections/connections";
 import { db } from "@/lib/db";
 import {
   type ListingDTO,
@@ -96,7 +97,12 @@ export async function discoverNearby(
     },
   });
 
-  const withDistance = rows.map((row) => ({
+  // Hide listings that already hold an active reservation for someone else —
+  // the seller has picked a buyer and the pickup is in progress.
+  const reserved = await listingIdsWithActiveReservation(rows.map((r) => r.id));
+  const visible = rows.filter((r) => !reserved.has(r.id));
+
+  const withDistance = visible.map((row) => ({
     ...listingToDTO(row),
     distanceKm: distanceKm(filters.near, {
       latitude: row.latitude,

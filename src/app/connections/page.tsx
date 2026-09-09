@@ -2,44 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
+  type ConnectionDetailDTO,
+  getConnectionDetail,
   listCollectorConnections,
   listSellerConnections,
-  type ConnectionDTO,
 } from "@/lib/connections/connections";
-import { db } from "@/lib/db";
-
-interface EnrichedConnection extends ConnectionDTO {
-  listingTitle: string;
-  counterpartyPhone: string;
-}
-
-async function enrich(
-  connections: ConnectionDTO[],
-  counterpartyKey: "sellerId" | "collectorId",
-): Promise<EnrichedConnection[]> {
-  if (connections.length === 0) return [];
-  const listingIds = Array.from(new Set(connections.map((c) => c.listingId)));
-  const partyIds = Array.from(new Set(connections.map((c) => c[counterpartyKey])));
-
-  const [listings, parties] = await Promise.all([
-    db.listing.findMany({
-      where: { id: { in: listingIds } },
-      select: { id: true, title: true },
-    }),
-    db.user.findMany({
-      where: { id: { in: partyIds } },
-      select: { id: true, phone: true },
-    }),
-  ]);
-  const listingTitle = new Map(listings.map((l) => [l.id, l.title]));
-  const partyPhone = new Map(parties.map((p) => [p.id, p.phone]));
-
-  return connections.map((c) => ({
-    ...c,
-    listingTitle: listingTitle.get(c.listingId) ?? "(deleted listing)",
-    counterpartyPhone: partyPhone.get(c[counterpartyKey]) ?? "(deleted user)",
-  }));
-}
 
 export default async function ConnectionsPage() {
   const user = await getCurrentUser();
@@ -49,9 +16,12 @@ export default async function ConnectionsPage() {
     listSellerConnections(user.id),
     listCollectorConnections(user.id),
   ]);
+  // Use getConnectionDetail so the same masking rule (exact phone only after
+  // both parties reveal) applies consistently across the list and the
+  // per-connection page.
   const [asSeller, asCollector] = await Promise.all([
-    enrich(asSellerRaw, "collectorId"),
-    enrich(asCollectorRaw, "sellerId"),
+    Promise.all(asSellerRaw.map((c) => getConnectionDetail(user.id, c.id))),
+    Promise.all(asCollectorRaw.map((c) => getConnectionDetail(user.id, c.id))),
   ]);
 
   return (
@@ -70,13 +40,7 @@ export default async function ConnectionsPage() {
         ) : (
           <ul style={listStyle}>
             {asSeller.map((c) => (
-              <li key={c.id} style={cardStyle}>
-                <div style={rowStyle}>
-                  <strong>{c.listingTitle}</strong>
-                  <span style={statusStyle}>{c.status}</span>
-                </div>
-                <p style={metaStyle}>Buyer: {c.counterpartyPhone}</p>
-              </li>
+              <ConnectionRow key={c.id} connection={c} side="seller" />
             ))}
           </ul>
         )}
@@ -89,18 +53,38 @@ export default async function ConnectionsPage() {
         ) : (
           <ul style={listStyle}>
             {asCollector.map((c) => (
-              <li key={c.id} style={cardStyle}>
-                <div style={rowStyle}>
-                  <strong>{c.listingTitle}</strong>
-                  <span style={statusStyle}>{c.status}</span>
-                </div>
-                <p style={metaStyle}>Seller: {c.counterpartyPhone}</p>
-              </li>
+              <ConnectionRow key={c.id} connection={c} side="collector" />
             ))}
           </ul>
         )}
       </section>
     </main>
+  );
+}
+
+function ConnectionRow({
+  connection,
+  side,
+}: {
+  connection: ConnectionDetailDTO;
+  side: "seller" | "collector";
+}) {
+  const counterpartyLabel = side === "seller" ? "Buyer" : "Seller";
+  const counterpartyPhone =
+    side === "seller" ? connection.collectorPhone : connection.sellerPhone;
+  return (
+    <li style={cardStyle}>
+      <div style={rowStyle}>
+        <Link href={`/connections/${connection.id}`} style={titleLinkStyle}>
+          {connection.listingTitle}
+        </Link>
+        <span style={statusStyleFor(connection.status)}>{connection.status}</span>
+      </div>
+      <p style={metaStyle}>
+        {counterpartyLabel}: {counterpartyPhone}
+        {!connection.contactRevealed && " (hidden until mutual reveal)"}
+      </p>
+    </li>
   );
 }
 
@@ -131,10 +115,20 @@ const metaStyle: React.CSSProperties = {
   margin: "0.4rem 0 0",
 };
 
-const statusStyle: React.CSSProperties = {
-  color: "#81c784",
-  fontSize: "0.85rem",
+const titleLinkStyle: React.CSSProperties = {
   fontWeight: 600,
+  color: "inherit",
+  textDecoration: "none",
 };
+
+function statusStyleFor(status: string): React.CSSProperties {
+  const color =
+    status === "RESERVED"
+      ? "#81c784"
+      : status === "CANCELLED"
+      ? "#ff8a80"
+      : "#9e9e9e";
+  return { color, fontSize: "0.85rem", fontWeight: 600 };
+}
 
 const emptyStyle: React.CSSProperties = { color: "#9e9e9e" };

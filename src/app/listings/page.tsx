@@ -31,8 +31,12 @@ export default async function ListingsPage() {
   // the interested-buyers panel without a client-side round-trip. A single
   // batched query for connections keeps this O(1); interests are per-listing.
   const connections = await listSellerConnections(user.id);
-  const connectionByListing = new Map(
-    connections.map((c) => [c.listingId, c] as const),
+  // Only RESERVED connections hold the listing — cancelled/expired ones are
+  // history and the seller can select again.
+  const activeConnectionByListing = new Map(
+    connections
+      .filter((c) => c.status === "RESERVED")
+      .map((c) => [c.listingId, c] as const),
   );
   const interestsByListing = new Map(
     await Promise.all(
@@ -46,7 +50,7 @@ export default async function ListingsPage() {
   // Resolve the selected collector's phone by joining the connection's
   // collectorId against the interests already fetched for that listing.
   function selectedPhoneFor(listingId: string): string | null {
-    const connection = connectionByListing.get(listingId);
+    const connection = activeConnectionByListing.get(listingId);
     if (!connection) return null;
     const interests = interestsByListing.get(listingId) ?? [];
     const match = interests.find((i) => i.collectorId === connection.collectorId);
@@ -134,6 +138,9 @@ export default async function ListingsPage() {
               listingId={listing.id}
               interests={interestsByListing.get(listing.id) ?? []}
               selectedCollectorPhone={selectedPhoneFor(listing.id)}
+              activeConnectionId={
+                activeConnectionByListing.get(listing.id)?.id ?? null
+              }
             />
           </li>
         ))}
@@ -150,20 +157,26 @@ interface BuyersPanelProps {
   listingId: string;
   interests: { id: string; collectorId: string; collectorPhone: string }[];
   selectedCollectorPhone: string | null;
+  activeConnectionId: string | null;
 }
 
-// Rendered under each listing: either "Selected: <buyer>" if the seller has
-// already picked someone, or the list of interested collectors with a Select
-// button next to each.
+// Rendered under each listing: either a reservation banner linking into the
+// connection detail when the seller has picked someone, or the list of
+// interested collectors with a Select button next to each.
 function BuyersPanel({
   listingId,
   interests,
   selectedCollectorPhone,
+  activeConnectionId,
 }: BuyersPanelProps) {
-  if (selectedCollectorPhone) {
+  if (selectedCollectorPhone && activeConnectionId) {
     return (
       <p style={selectedStyle}>
-        Selected buyer: <strong>{selectedCollectorPhone}</strong>
+        Reserved for <strong>{selectedCollectorPhone}</strong> —{" "}
+        <Link href={`/connections/${activeConnectionId}`}>
+          open the connection
+        </Link>{" "}
+        to chat, reveal contact, or cancel.
       </p>
     );
   }

@@ -9,6 +9,8 @@ const STATUS: Record<ConnectionErrorCode, number> = {
   not_interested: 409,
   already_selected: 409,
   own_listing: 422,
+  not_reserved: 409,
+  empty_message: 400,
 };
 
 /**

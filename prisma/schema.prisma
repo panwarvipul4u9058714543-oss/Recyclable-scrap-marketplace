@@ -2,7 +2,8 @@
 // Step 2 introduces the accounts domain: users, multi-role support, mocked
 // phone verification, and sessions. Step 3 adds scrap listings. Step 4 adds
 // coordinates for nearby-discovery filters. Issue #3 step 1 adds the
-// buyer–seller interest/connection primitives.
+// buyer–seller interest/connection primitives; steps 2–3 add reservation
+// expiry, in-app chat and mutual contact-reveal timestamps.
 
 generator client {
   provider = "prisma-client-js"
@@ -123,25 +124,46 @@ model Interest {
   @@index([collectorId])
 }
 
-// The seller's pick of a buyer for a listing. Step 1 creates it in SELECTED
-// state; later steps (reservation, chat/contact reveal, outcome) layer more
-// state onto the same row. A listing may hold at most one non-terminal
-// connection at a time; the service layer enforces this.
+// The seller's pick of a buyer for a listing. Selection creates the connection
+// in RESERVED state with an expiry; either party can cancel, and an expired
+// reservation transitions to EXPIRED on the next read. `sellerRevealedAt` /
+// `collectorRevealedAt` back the mutual contact-reveal flow — exact phone
+// numbers and pickup coordinates become visible only once both are set. A
+// listing may hold at most one non-terminal connection at a time; the
+// service layer enforces this.
 model Connection {
-  id          String   @id @default(cuid())
-  listingId   String
-  sellerId    String
-  collectorId String
-  status      String   @default("SELECTED") // Step 1: SELECTED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  listingId           String
+  sellerId            String
+  collectorId         String
+  status              String    @default("RESERVED") // RESERVED | CANCELLED | EXPIRED
+  expiresAt           DateTime
+  sellerRevealedAt    DateTime?
+  collectorRevealedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  seller    User    @relation("SellerConnections", fields: [sellerId], references: [id], onDelete: Cascade)
-  collector User    @relation("BuyerConnections", fields: [collectorId], references: [id], onDelete: Cascade)
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seller    User      @relation("SellerConnections", fields: [sellerId], references: [id], onDelete: Cascade)
+  collector User      @relation("BuyerConnections", fields: [collectorId], references: [id], onDelete: Cascade)
+  messages  Message[]
 
   @@index([listingId])
   @@index([sellerId])
   @@index([collectorId])
   @@index([status])
+}
+
+// A chat message on a connection. Either party may post while the connection
+// is RESERVED; cancelled/expired connections are read-only.
+model Message {
+  id           String   @id @default(cuid())
+  connectionId String
+  senderId     String
+  body         String
+  createdAt    DateTime @default(now())
+
+  connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
 }
