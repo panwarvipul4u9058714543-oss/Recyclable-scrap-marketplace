@@ -43,6 +43,35 @@ export function NearbyBrowser() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [interests, setInterests] = useState<Record<string, InterestState>>({});
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+
+  async function reportListing(listingId: string) {
+    if (reportedIds.has(listingId)) return;
+    const reason = window.prompt(
+      "Why are you reporting this listing? (e.g. prohibited material, spam, fraud)",
+    );
+    if (!reason || reason.trim().length < 2) return;
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          targetType: "LISTING",
+          targetId: listingId,
+          reason: reason.trim(),
+        }),
+      });
+      if (res.ok) {
+        setReportedIds((prev) => {
+          const next = new Set(prev);
+          next.add(listingId);
+          return next;
+        });
+      }
+    } catch {
+      // best-effort — the user can retry
+    }
+  }
 
   async function toggleInterest(listingId: string) {
     const current = interests[listingId] ?? "idle";
@@ -271,7 +300,7 @@ export function NearbyBrowser() {
                   {r.quantityMax} {QUANTITY_UNIT_LABELS[r.quantityUnit]} ·{" "}
                   {r.locality} · {AVAILABILITY_LABELS[r.availability]}
                 </p>
-                <div style={{ marginTop: "0.6rem" }}>
+                <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
                   {(() => {
                     const state = interests[r.id] ?? "idle";
                     if (state === "done") {
@@ -300,6 +329,13 @@ export function NearbyBrowser() {
                       </button>
                     );
                   })()}
+                  <button
+                    type="button"
+                    onClick={() => reportListing(r.id)}
+                    style={secondaryButtonStyle}
+                  >
+                    {reportedIds.has(r.id) ? "Reported" : "Report listing"}
+                  </button>
                 </div>
               </li>
             ))}

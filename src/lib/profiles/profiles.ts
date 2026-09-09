@@ -5,6 +5,7 @@ import {
   type MaterialCategory,
   materialCategorySchema,
 } from "@/lib/materials";
+import { getRatingSummary, type RatingSummary } from "@/lib/ratings/ratings";
 import type { Role } from "@/lib/roles";
 
 /**
@@ -32,6 +33,7 @@ export interface ReputationSummary {
   cancelledOrExpired: number;
   failed: number;
   memberSince: Date;
+  rating: RatingSummary;
 }
 
 /**
@@ -176,6 +178,7 @@ export async function computeReputation(userId: string): Promise<ReputationSumma
     cancelledOrExpiredCollector,
     failedSeller,
     failedCollector,
+    rating,
   ] = await Promise.all([
     db.connection.count({ where: { sellerId: userId, status: "COMPLETED" } }),
     db.connection.count({
@@ -192,6 +195,7 @@ export async function computeReputation(userId: string): Promise<ReputationSumma
     }),
     db.connection.count({ where: { sellerId: userId, status: "FAILED" } }),
     db.connection.count({ where: { collectorId: userId, status: "FAILED" } }),
+    getRatingSummary(userId),
   ]);
 
   return {
@@ -200,6 +204,7 @@ export async function computeReputation(userId: string): Promise<ReputationSumma
     cancelledOrExpired: cancelledOrExpiredSeller + cancelledOrExpiredCollector,
     failed: failedSeller + failedCollector,
     memberSince,
+    rating,
   };
 }
 

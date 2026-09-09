@@ -6,7 +6,9 @@ import {
   getConnectionDetail,
   listMessages,
 } from "@/lib/connections/connections";
+import { getRatingByRater } from "@/lib/ratings/ratings";
 import { ConnectionChat } from "./ConnectionChat";
+import { RatingForm } from "./RatingForm";
 
 type Params = { params: { id: string } };
 
@@ -30,6 +32,11 @@ export default async function ConnectionDetailPage({ params }: Params) {
   const counterpartyId = viewerIsSeller
     ? detail.collectorId
     : detail.sellerId;
+  const terminal =
+    detail.status === "COMPLETED" || detail.status === "FAILED";
+  const existingRating = terminal
+    ? await getRatingByRater(user.id, detail.id)
+    : null;
 
   return (
     <main>
@@ -69,6 +76,15 @@ export default async function ConnectionDetailPage({ params }: Params) {
         }))}
         currentUserId={user.id}
       />
+
+      {terminal && (
+        <RatingForm
+          connectionId={detail.id}
+          counterpartyLabel={viewerIsSeller ? "the collector" : "the seller"}
+          existingScore={existingRating?.score ?? null}
+          existingComment={existingRating?.comment ?? null}
+        />
+      )}
     </main>
   );
 }

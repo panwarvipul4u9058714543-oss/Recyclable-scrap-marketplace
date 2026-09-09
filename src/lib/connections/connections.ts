@@ -1,5 +1,6 @@
 import type { Connection, Interest, Message } from "@prisma/client";
 import { db } from "@/lib/db";
+import { isBlockedEitherWay } from "@/lib/blocks/blocks";
 import { COLLECTOR_ROLES } from "@/lib/roles";
 
 /** Connection lifecycle. Step 1 introduced the row; steps 2–3 add reservation
@@ -37,7 +38,8 @@ export type ConnectionErrorCode =
   | "own_listing"
   | "not_reserved"
   | "empty_message"
-  | "invalid_outcome";
+  | "invalid_outcome"
+  | "blocked";
 
 /** A domain error the API layer maps to an HTTP status. */
 export class ConnectionError extends Error {
@@ -215,6 +217,9 @@ export async function expressInterest(
   const reserved = await findActiveReservation(listingId);
   if (reserved) throw new ConnectionError("already_selected");
   await assertCollectorRole(collectorId);
+  if (await isBlockedEitherWay(collectorId, listing.sellerId)) {
+    throw new ConnectionError("blocked");
+  }
 
   const row = await db.interest.upsert({
     where: { listingId_collectorId: { listingId, collectorId } },
@@ -276,6 +281,9 @@ export async function selectBuyer(
 
   const reserved = await findActiveReservation(listingId);
   if (reserved) throw new ConnectionError("already_selected");
+  if (await isBlockedEitherWay(sellerId, collectorId)) {
+    throw new ConnectionError("blocked");
+  }
 
   const row = await db.connection.create({
     data: {
@@ -558,6 +566,11 @@ export async function postMessage(
   if (trimmed.length === 0) throw new ConnectionError("empty_message");
   const row = await loadForParty(userId, connectionId);
   if (row.status !== "RESERVED") throw new ConnectionError("not_reserved");
+  const counterpartyId =
+    row.sellerId === userId ? row.collectorId : row.sellerId;
+  if (await isBlockedEitherWay(userId, counterpartyId)) {
+    throw new ConnectionError("blocked");
+  }
 
   const message = await db.message.create({
     data: { connectionId: row.id, senderId: userId, body: trimmed },

@@ -103,6 +103,16 @@ adds trust, privacy and moderation. Built in steps:
    the user's own profile and on their **public profile page** at
    `/u/[id]`, which never exposes phone numbers or exact addresses. Connection
    pages link to each counterparty's public profile.
+3. **Reports, blocks and ratings** ✅ — signed-in users can **report** a
+   listing (from `/nearby`) or another user (from their public profile) with
+   a reason and optional details; reports are stored `OPEN` for operator
+   review. Users can **block** another user from the public profile; blocks
+   are symmetric at the interaction gates — the blocker's listings and the
+   blocked user's listings disappear from each other's `/nearby`, and
+   interest, buyer selection and chat are refused with a `blocked` error.
+   After a **COMPLETED** or **FAILED** connection, either party can submit a
+   1–5 **rating** with an optional comment; the counterparty's public
+   profile shows the average and count alongside their reputation summary.
 
 ### Buyer–seller connections
 

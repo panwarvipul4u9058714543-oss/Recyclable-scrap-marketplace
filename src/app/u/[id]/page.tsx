@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { listBlockedIds } from "@/lib/blocks/blocks";
 import {
   MATERIAL_LABELS,
   type MaterialCategory,
 } from "@/lib/materials";
 import { ROLE_LABELS } from "@/lib/roles";
 import { getPublicProfile } from "@/lib/profiles/profiles";
+import { SafetyActions } from "./SafetyActions";
 
 interface PublicProfilePageProps {
   params: { id: string };
@@ -14,13 +17,24 @@ interface PublicProfilePageProps {
 export default async function PublicProfilePage({
   params,
 }: PublicProfilePageProps) {
-  const profile = await getPublicProfile(params.id);
+  const [profile, viewer] = await Promise.all([
+    getPublicProfile(params.id),
+    getCurrentUser(),
+  ]);
   if (!profile) notFound();
+
+  const isSelf = viewer?.id === profile.userId;
+  const blockedIds = viewer && !isSelf ? await listBlockedIds(viewer.id) : [];
+  const isBlocked = blockedIds.includes(profile.userId);
 
   const heading = profile.displayName ?? "Marketplace member";
   const memberSinceLabel = profile.reputation.memberSince
     .toISOString()
     .slice(0, 10);
+  const ratingLabel =
+    profile.reputation.rating.count > 0
+      ? `★ ${profile.reputation.rating.average!.toFixed(1)} from ${profile.reputation.rating.count} rating${profile.reputation.rating.count === 1 ? "" : "s"}`
+      : "No ratings yet";
 
   return (
     <main>
@@ -91,6 +105,9 @@ export default async function PublicProfilePage({
 
       <section aria-label="Reputation" style={{ margin: "1rem 0" }}>
         <h2 style={{ fontSize: "1.05rem" }}>Reputation</h2>
+        <p style={{ margin: "0 0 0.4rem", fontSize: "1.1rem" }}>
+          <strong>{ratingLabel}</strong>
+        </p>
         <ul style={{ paddingLeft: "1.2rem", margin: 0 }}>
           <li>Completed pickups as seller: {profile.reputation.completedAsSeller}</li>
           <li>
@@ -101,6 +118,13 @@ export default async function PublicProfilePage({
           <li>Failed pickups: {profile.reputation.failed}</li>
         </ul>
       </section>
+
+      {viewer && !isSelf && (
+        <SafetyActions
+          targetUserId={profile.userId}
+          initiallyBlocked={isBlocked}
+        />
+      )}
 
       <p style={{ color: "#9e9e9e", fontSize: "0.85rem" }}>
         Phone numbers and exact addresses are only shared once both parties

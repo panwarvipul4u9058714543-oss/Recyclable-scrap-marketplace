@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listBlockedByIds, listBlockedIds } from "@/lib/blocks/blocks";
 import { listingIdsWithActiveReservation } from "@/lib/connections/connections";
 import { db } from "@/lib/db";
 import {
@@ -78,10 +79,20 @@ export async function discoverNearby(
 ): Promise<DiscoveryResult[]> {
   const filters = discoveryFiltersSchema.parse(input);
 
+    // Hide listings from either side of a block: sellers the viewer has
+  // blocked, and sellers who have blocked the viewer.
+  const [blockedByViewer, blockedByOthers] = await Promise.all([
+    listBlockedIds(viewerId),
+    listBlockedByIds(viewerId),
+  ]);
+  const hiddenSellerIds = Array.from(
+    new Set([viewerId, ...blockedByViewer, ...blockedByOthers]),
+  );
+
   const rows = await db.listing.findMany({
     where: {
       status: "ACTIVE",
-      sellerId: { not: viewerId },
+      sellerId: { notIn: hiddenSellerIds },
       ...(filters.materialCategory
         ? { materialCategory: filters.materialCategory }
         : {}),

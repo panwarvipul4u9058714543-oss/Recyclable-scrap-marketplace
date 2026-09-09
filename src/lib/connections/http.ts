@@ -12,6 +12,7 @@ const STATUS: Record<ConnectionErrorCode, number> = {
   not_reserved: 409,
   empty_message: 400,
   invalid_outcome: 400,
+  blocked: 403,
 };
 
 /**

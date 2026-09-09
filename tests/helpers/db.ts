@@ -6,9 +6,12 @@ import { db } from "@/lib/db";
  */
 export async function resetDb() {
   await db.message.deleteMany();
+  await db.rating.deleteMany();
   await db.connection.deleteMany();
   await db.interest.deleteMany();
   await db.listing.deleteMany();
+  await db.report.deleteMany();
+  await db.block.deleteMany();
   await db.session.deleteMany();
   await db.userRole.deleteMany();
   await db.profile.deleteMany();

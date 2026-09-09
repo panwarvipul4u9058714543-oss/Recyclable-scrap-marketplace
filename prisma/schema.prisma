@@ -30,6 +30,12 @@ model User {
   buyerConnections   Connection[] @relation("BuyerConnections")
   sellerConnections  Connection[] @relation("SellerConnections")
   profile            Profile?
+  reportsFiled       Report[]     @relation("ReportsFiled")
+  reportsReviewed    Report[]     @relation("ReportsReviewed")
+  blocksIssued       Block[]      @relation("BlocksIssued")
+  blocksReceived     Block[]      @relation("BlocksReceived")
+  ratingsGiven       Rating[]     @relation("RatingsGiven")
+  ratingsReceived    Rating[]     @relation("RatingsReceived")
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -178,11 +184,76 @@ model Connection {
   seller    User      @relation("SellerConnections", fields: [sellerId], references: [id], onDelete: Cascade)
   collector User      @relation("BuyerConnections", fields: [collectorId], references: [id], onDelete: Cascade)
   messages  Message[]
+  ratings   Rating[]
 
   @@index([listingId])
   @@index([sellerId])
   @@index([collectorId])
   @@index([status])
+}
+
+// A report of a listing or a user, filed by any signed-in user for operator
+// review. `targetType` is either "USER" or "LISTING"; the target row is not
+// FK-referenced (a listing may be deleted and the report should survive).
+// `status` moves OPEN -> REVIEWED | DISMISSED once an operator has acted.
+model Report {
+  id           String    @id @default(cuid())
+  reporterId   String
+  targetType   String // USER | LISTING
+  targetId     String
+  reason       String
+  details      String?
+  status       String    @default("OPEN") // OPEN | REVIEWED | DISMISSED
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  reporter User  @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReportsReviewed", fields: [reviewedById], references: [id])
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([reporterId])
+}
+
+// A user's block of another user. The relation is one-way from the blocker's
+// perspective but is treated symmetrically at the interaction gates (a block
+// prevents interest, messaging and buyer selection in either direction).
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksIssued", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+// A rating one party leaves for the counterparty after a terminal connection
+// (COMPLETED or FAILED). Score is 1..5; comment is optional. One rating per
+// (connection, rater) so each party can rate the other exactly once per
+// connection.
+model Rating {
+  id           String   @id @default(cuid())
+  connectionId String
+  raterId      String
+  rateeId      String
+  score        Int
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  rater      User       @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
+  ratee      User       @relation("RatingsReceived", fields: [rateeId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, raterId])
+  @@index([rateeId])
+  @@index([connectionId])
 }
 
 // A chat message on a connection. Either party may post while the connection
