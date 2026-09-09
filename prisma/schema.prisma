@@ -46,6 +46,7 @@ model User {
   ratingsReceived     Rating[]            @relation("RatingsReceived")
   routes              Route[]
   routeNotifications  RouteNotification[]
+  bulkRequirements    BulkRequirement[]
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -323,6 +324,35 @@ model RouteNotification {
   @@unique([collectorId, listingId])
   @@index([collectorId])
   @@index([routeId])
+}
+
+// A bulk buy requirement published by a dealer, business or recycler for
+// larger or recurring supply. Suppliers (small collectors and dealers) browse
+// these on /bulk/browse and can respond with what they have. `region` is a
+// free-form service area label used for text-match filtering; deadlineAt is
+// an optional pickup-by date. `acceptedMaterials` is JSON-encoded (SQLite has
+// no native array type); `qualityNotes` is a short free-form field for
+// grade / condition expectations. A requirement moves ACTIVE -> CLOSED once
+// the buyer no longer needs it (a service call, not a scheduled sweep).
+model BulkRequirement {
+  id                String    @id @default(cuid())
+  buyerId           String
+  material          String
+  minQuantity       Float
+  minQuantityUnit   String
+  qualityNotes      String?
+  region            String
+  deadlineAt        DateTime?
+  status            String    @default("ACTIVE") // ACTIVE | CLOSED
+  closedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  buyer User @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([material])
 }
 
 // A chat message on a connection. Either party may post while the connection

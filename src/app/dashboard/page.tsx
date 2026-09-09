@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
+  BULK_BUYER_ROLES,
+  BULK_SUPPLIER_ROLES,
   COLLECTOR_ROLES,
   ROLE_LABELS,
   SELLER_ROLES,
@@ -27,6 +29,9 @@ export default async function DashboardPage() {
 
   const canSell = user.roles.some((r) => SELLER_ROLES.includes(r));
   const canBrowse = user.roles.some((r) => COLLECTOR_ROLES.includes(r));
+  const canPublishBulk = user.roles.some((r) => BULK_BUYER_ROLES.includes(r));
+  const canRespondBulk = user.roles.some((r) => BULK_SUPPLIER_ROLES.includes(r));
+  const canBulk = canPublishBulk || canRespondBulk;
 
   return (
     <main>
@@ -60,7 +65,7 @@ export default async function DashboardPage() {
         </ul>
       )}
 
-      {(canSell || canBrowse) && (
+      {(canSell || canBrowse || canBulk) && (
         <section aria-label="Your actions" style={{ marginTop: "1.5rem" }}>
           <h2 style={{ fontSize: "1.05rem" }}>What you can do</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem" }}>
@@ -79,6 +84,16 @@ export default async function DashboardPage() {
                 Plan a route
               </Link>
             )}
+            {canPublishBulk && (
+              <Link href="/bulk" style={ctaStyle}>
+                Publish a bulk requirement
+              </Link>
+            )}
+            {canRespondBulk && (
+              <Link href="/bulk/browse" style={ctaStyle}>
+                Browse bulk requirements
+              </Link>
+            )}
             <Link href="/connections" style={ctaStyle}>
               Your connections
             </Link>
@@ -94,7 +109,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {!canSell && !canBrowse && user.isAdmin && (
+      {!canSell && !canBrowse && !canBulk && user.isAdmin && (
         <section aria-label="Admin actions" style={{ marginTop: "1.5rem" }}>
           <Link href="/moderation" style={ctaStyle}>
             Moderation queue
@@ -102,7 +117,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {!canSell && !canBrowse && (
+      {!canSell && !canBrowse && !canBulk && (
         <p style={{ marginTop: "1.5rem", color: "#9e9e9e" }}>
           Pick a role to unlock the workflows that fit it.{" "}
           <Link href="/profile">Edit your profile</Link>.

@@ -36,6 +36,24 @@ export const COLLECTOR_ROLES: readonly Role[] = [
   "RECYCLER",
 ];
 
+/**
+ * Roles that can publish a bulk buy requirement (larger / recurring supply
+ * needs). Dealers, businesses and recyclers all deal in bulk quantities and
+ * are the buy side of the bulk marketplace.
+ */
+export const BULK_BUYER_ROLES: readonly Role[] = [
+  "DEALER",
+  "BUSINESS",
+  "RECYCLER",
+];
+
+/**
+ * Roles that can respond to a bulk buy requirement. Small collectors
+ * (kabadiwalas) and dealers aggregate supply on the ground, so they are the
+ * supply side of the bulk flow.
+ */
+export const BULK_SUPPLIER_ROLES: readonly Role[] = ["COLLECTOR", "DEALER"];
+
 export const roleSchema = z.enum(ROLES);
 
 /**
