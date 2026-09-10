@@ -50,6 +50,8 @@ model User {
   bulkResponsesAsSupplier BulkResponse[] @relation("BulkResponsesAsSupplier")
   savedSearches       SavedSearch[]
   savedSearchAlerts   SavedSearchAlert[]
+  promotions          Promotion[]         @relation("PromotionsPurchased")
+  subscriptions       PremiumSubscription[] @relation("SubscriberSubscriptions")
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -148,6 +150,7 @@ model Listing {
   connections        Connection[]
   routeNotifications RouteNotification[]
   savedSearchAlerts  SavedSearchAlert[]
+  promotions         Promotion[]
 
   @@index([sellerId])
   @@index([status])
@@ -499,4 +502,86 @@ model AnalyticsEvent {
   @@index([actorId])
   @@index([material])
   @@index([locality])
+}
+
+// A paid promotion of a Listing purchased by a professional seller (dealer,
+// business or recycler). Households and small collectors cannot buy
+// promotions — basic listing and discovery stay free per issue #8 acceptance
+// criteria. The promotion does NOT change the direct-negotiation or
+// direct-payment model — it only boosts visibility in discovery and marks
+// the listing so buyers can see it is promoted. `priceCents` is the
+// declared price for the tier, recorded so operators can measure revenue-
+// declared; no real payment is processed in this initial release.
+// Lifecycle: PENDING (purchased) -> ACTIVE (activated at startsAt) ->
+// EXPIRED (endsAt passed) or CANCELLED. The service marks PENDING rows
+// ACTIVE lazily on read once their startsAt has passed.
+model Promotion {
+  id           String    @id @default(cuid())
+  listingId    String
+  promoterId   String
+  tier         String // STANDARD | PREMIUM
+  status       String    @default("PENDING") // PENDING | ACTIVE | EXPIRED | CANCELLED
+  priceCents   Int
+  startsAt     DateTime  @default(now())
+  endsAt       DateTime
+  activatedAt  DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  promoter User    @relation("PromotionsPurchased", fields: [promoterId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([promoterId])
+  @@index([status])
+  @@index([endsAt])
+}
+
+// An optional premium subscription for a professional user (dealer, business,
+// recycler). Grants access to business tools — a monthly analytics digest,
+// higher promoted-listing quota, priority in saved-search alerts — without
+// changing the direct-negotiation model. Lifecycle: ACTIVE (subscribed) ->
+// CANCELLED (user cancelled) or EXPIRED (endsAt passed). Exactly one non-
+// terminal subscription per user at a time — the service enforces this.
+model PremiumSubscription {
+  id            String    @id @default(cuid())
+  subscriberId  String
+  plan          String // BUSINESS | PRO
+  status        String    @default("ACTIVE") // ACTIVE | CANCELLED | EXPIRED
+  priceCents    Int
+  startsAt      DateTime  @default(now())
+  endsAt        DateTime
+  cancelledAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscriber User @relation("SubscriberSubscriptions", fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@index([subscriberId])
+  @@index([status])
+  @@index([endsAt])
+}
+
+// An operator-configured advertising placement. Rendered on a surface
+// (currently DISCOVERY, BULK_BROWSE or DASHBOARD) as a distinct block that
+// never blocks the core transaction flow. `status` is ACTIVE or PAUSED;
+// only ACTIVE placements are ever rendered. Views and clicks are counted
+// in AnalyticsEvent (AD_PLACEMENT_IMPRESSION, AD_PLACEMENT_CLICK) so
+// operators can measure exposure and activation of paid inventory.
+model AdPlacement {
+  id          String    @id @default(cuid())
+  surface     String // DISCOVERY | BULK_BROWSE | DASHBOARD
+  headline    String
+  body        String
+  linkUrl     String
+  sponsorName String?
+  status      String    @default("ACTIVE") // ACTIVE | PAUSED
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([surface, status])
+  @@index([endsAt])
 }

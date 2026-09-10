@@ -40,6 +40,19 @@ export const ANALYTICS_EVENT_TYPES = [
   "BULK_MUTUAL_REVEAL_COMPLETED",
   // Saved-search alerts fanned out to a bulk buyer at listing-create time.
   "SAVED_SEARCH_ALERT_CREATED",
+  // Monetisation lifecycle (issue #8). Recorded so operators can measure
+  // exposure (impression), activation (a promoted listing being viewed or an
+  // ad click) and usage (subscriptions and promotions in flight).
+  "PROMOTION_PURCHASED",
+  "PROMOTION_ACTIVATED",
+  "PROMOTION_CANCELLED",
+  "PROMOTION_EXPIRED",
+  "PROMOTED_LISTING_VIEWED",
+  "SUBSCRIPTION_STARTED",
+  "SUBSCRIPTION_CANCELLED",
+  "AD_PLACEMENT_CREATED",
+  "AD_PLACEMENT_IMPRESSION",
+  "AD_PLACEMENT_CLICK",
 ] as const;
 export type AnalyticsEventType = (typeof ANALYTICS_EVENT_TYPES)[number];
 
@@ -68,6 +81,9 @@ export const ANALYTICS_SUBJECT_TYPES = [
   "BULK_RESPONSE",
   "SAVED_SEARCH",
   "SAVED_SEARCH_ALERT",
+  "PROMOTION",
+  "SUBSCRIPTION",
+  "AD_PLACEMENT",
 ] as const;
 export type AnalyticsSubjectType = (typeof ANALYTICS_SUBJECT_TYPES)[number];
 
