@@ -150,6 +150,42 @@ already making, so travel is not wasted. Built in steps:
    you drive, review matches after you park* safety notice and is
    deliberately submit-once (no live tracker while driving). Dashboard now
    shows a *Plan a route* CTA for collector, dealer and recycler roles.
+Issue [#6](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/6)
+adds the dealer / recycler bulk marketplace. Built in steps:
+
+1. **Bulk requirement model, search and publish UI** ✅ — dealers,
+   businesses and recyclers publish a `BulkRequirement` at `/bulk`
+   (material, minimum quantity + unit, region, optional quality notes and
+   deadline). Small collectors and dealers browse open requirements on
+   `/bulk/browse` with filters for material, region substring, buyer type
+   and how much they can supply. Each result carries a **buyer verification
+   badge** (organisation name, registration ID, roles, reputation summary)
+   so a supplier can gauge risk before contact. `/nearby`-style visibility
+   rules apply: ACTIVE only, no suspended buyers, no requirements from
+   either side of a block, no own-requirements, expired deadlines hidden.
+2. **Supplier response lifecycle** ✅ — a supplier submits a
+   `BulkResponse` (offered quantity + unit + optional notes) on a
+   requirement's detail page. The buyer sees pending responses and picks
+   one, which transitions that response to `SELECTED` and opens the same
+   shape of flow used for household connections: in-app chat, mutual
+   contact-reveal (masks phones until both parties reveal), and outcome
+   recording (COMPLETED / FAILED with optional actual quantity, final
+   price, failure reason). Only one response per requirement can be
+   `SELECTED` at a time. Either party may cancel a `SELECTED` match; a
+   supplier can withdraw a `PENDING` response.
+3. **Saved supply searches with match alerts** ✅ — bulk buyers save
+   named supply searches (material, minimum supplier quantity + unit,
+   region substring) on `/bulk` and receive an alert row per matching new
+   listing. `fanOutSavedSearchesForNewListing` runs on the listing-create
+   path alongside the route fan-out and is idempotent per
+   `(savedSearchId, listingId)`. Each search has an **Alerts on** toggle
+   so buyers can pause a search without deleting it. Alerts render on
+   `/bulk` with a **NEW badge**, unseen count and *Mark as seen* button.
+   Exposed at `GET`/`POST /api/saved-searches`,
+   `PATCH`/`DELETE /api/saved-searches/[id]`,
+   `GET /api/saved-search-alerts` and
+   `POST /api/saved-search-alerts/[id]/seen`.
+
 3. **Route match notifications with per-user preferences** ✅ — when a new
    listing is created, `fanOutForNewListing` inserts a `RouteNotification`
    for every collector whose `ACTIVE` route matches that specific listing

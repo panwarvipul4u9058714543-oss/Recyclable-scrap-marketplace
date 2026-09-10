@@ -48,6 +48,8 @@ model User {
   routeNotifications  RouteNotification[]
   bulkRequirements    BulkRequirement[]
   bulkResponsesAsSupplier BulkResponse[] @relation("BulkResponsesAsSupplier")
+  savedSearches       SavedSearch[]
+  savedSearchAlerts   SavedSearchAlert[]
 }
 
 // A user's public-facing profile. Every field is optional so the profile can
@@ -145,6 +147,7 @@ model Listing {
   interests          Interest[]
   connections        Connection[]
   routeNotifications RouteNotification[]
+  savedSearchAlerts  SavedSearchAlert[]
 
   @@index([sellerId])
   @@index([status])
@@ -389,6 +392,49 @@ model BulkResponse {
   @@index([requirementId])
   @@index([supplierId])
   @@index([status])
+}
+
+// A bulk buyer's saved search over active supply listings. When a new
+// ACTIVE Listing is created that matches the search (material,
+// supplyMinQuantity + unit, region substring), a `SavedSearchAlert` row is
+// fanned out to that buyer. The per-search `alertsEnabled` toggle gates the
+// fan-out at write time so buyers who paused a search never receive rows
+// from it. A buyer may have many saved searches.
+model SavedSearch {
+  id                    String   @id @default(cuid())
+  buyerId               String
+  name                  String
+  material              String?
+  supplyMinQuantity     Float?
+  supplyMinQuantityUnit String?
+  region                String?
+  alertsEnabled         Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  buyer  User                @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  alerts SavedSearchAlert[]
+
+  @@index([buyerId])
+}
+
+// One alert: a Listing matched one of the buyer's SavedSearches. Unique on
+// (savedSearchId, listingId) so a repeated fan-out is a no-op — matches the
+// route-notification pattern.
+model SavedSearchAlert {
+  id            String    @id @default(cuid())
+  savedSearchId String
+  buyerId       String
+  listingId     String
+  seenAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  savedSearch SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  buyer       User        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  listing     Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([savedSearchId, listingId])
+  @@index([buyerId])
 }
 
 // A chat message on a SELECTED bulk response. Either party may post while

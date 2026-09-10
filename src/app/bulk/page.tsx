@@ -3,9 +3,15 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { listBulkRequirementsForBuyer } from "@/lib/bulk/requirements";
 import { listResponsesForSupplier } from "@/lib/bulk/responses";
+import {
+  listSavedSearchAlertsForBuyer,
+  listSavedSearchesForBuyer,
+} from "@/lib/bulk/saved-searches";
 import { BULK_BUYER_ROLES, BULK_SUPPLIER_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { BulkRequirementForm } from "./BulkRequirementForm";
 import { BulkRequirementList } from "./BulkRequirementList";
+import { SavedSearchAlerts } from "./SavedSearchAlerts";
+import { SavedSearchesPanel } from "./SavedSearchesPanel";
 import { SupplierResponsesList } from "./SupplierResponsesList";
 
 export default async function BulkPage() {
@@ -40,6 +46,12 @@ export default async function BulkPage() {
     : [];
   const myResponses = canRespond
     ? await listResponsesForSupplier(user.id)
+    : [];
+  const savedSearches = canPublish
+    ? await listSavedSearchesForBuyer(user.id)
+    : [];
+  const savedSearchAlerts = canPublish
+    ? await listSavedSearchAlertsForBuyer(user.id)
     : [];
 
   return (
@@ -93,6 +105,33 @@ export default async function BulkPage() {
             <BulkRequirementForm />
           </section>
 
+          <SavedSearchesPanel
+            searches={savedSearches.map((s) => ({
+              id: s.id,
+              name: s.name,
+              material: s.material,
+              supplyMinQuantity: s.supplyMinQuantity,
+              supplyMinQuantityUnit: s.supplyMinQuantityUnit,
+              region: s.region,
+              alertsEnabled: s.alertsEnabled,
+            }))}
+          />
+          <SavedSearchAlerts
+            alerts={savedSearchAlerts.map((a) => ({
+              id: a.id,
+              seenAt: a.seenAt ? a.seenAt.toISOString() : null,
+              createdAt: a.createdAt.toISOString(),
+              listing: {
+                id: a.listing.id,
+                title: a.listing.title,
+                materialCategory: a.listing.materialCategory,
+                quantityMin: a.listing.quantityMin,
+                quantityMax: a.listing.quantityMax,
+                quantityUnit: a.listing.quantityUnit,
+                locality: a.listing.locality,
+              },
+            }))}
+          />
           <section
             aria-label="Your bulk requirements"
             style={{ margin: "1.5rem 0" }}

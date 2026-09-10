@@ -14,6 +14,8 @@ export async function resetDb() {
   await db.block.deleteMany();
   await db.routeNotification.deleteMany();
   await db.route.deleteMany();
+  await db.savedSearchAlert.deleteMany();
+  await db.savedSearch.deleteMany();
   await db.bulkResponseMessage.deleteMany();
   await db.bulkResponse.deleteMany();
   await db.bulkRequirement.deleteMany();
