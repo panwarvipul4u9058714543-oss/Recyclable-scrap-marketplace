@@ -2,8 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Role } from "@/lib/roles";
-import { COLLECTOR_ROLES } from "@/lib/roles";
+import { Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Textarea } from "@/components/ui/input";
+import { FieldHint, Label } from "@/components/ui/label";
+import { COLLECTOR_ROLES, type Role } from "@/lib/roles";
 import {
   MATERIAL_CATEGORIES,
   MATERIAL_LABELS,
@@ -103,171 +109,154 @@ export function ProfileForm({ roles, initial }: ProfileFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
-      {saved && (
-        <p role="status" style={{ color: "#a5d6a7" }}>
-          Profile saved.
-        </p>
-      )}
+    <form onSubmit={onSubmit} className="space-y-6">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
+      {saved ? <InlineNote tone="ok">Profile saved.</InlineNote> : null}
 
-      <label htmlFor="displayName">Display name</label>
-      <input
-        id="displayName"
-        value={displayName}
-        onChange={(e) => setDisplayName(e.target.value)}
-        placeholder="Shown to others instead of your phone"
-        style={inputStyle}
-      />
-
-      <label htmlFor="bio">About you (optional)</label>
-      <textarea
-        id="bio"
-        value={bio}
-        onChange={(e) => setBio(e.target.value)}
-        rows={3}
-        placeholder="A short intro others will see on your profile"
-        style={inputStyle}
-      />
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4">
+          <h2 className="font-serif text-xl tracking-tight">Public identity</h2>
+          <p className="mt-1 text-sm text-ash">
+            The name and short bio others see across the marketplace.
+          </p>
+        </div>
+        <div className="grid gap-4">
+          <div>
+            <Label htmlFor="displayName">Display name</Label>
+            <Input
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Shown to others instead of your phone"
+            />
+          </div>
+          <div>
+            <Label htmlFor="bio">About you (optional)</Label>
+            <Textarea
+              id="bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={3}
+              placeholder="A short intro others will see on your profile"
+            />
+            <FieldHint>
+              A line or two — what you deal in, when you&apos;re usually free,
+              anything a match would want to know.
+            </FieldHint>
+          </div>
+        </div>
+      </Card>
 
       {isOrgRole && (
-        <fieldset style={fieldsetStyle}>
-          <legend>Organisation &amp; verification</legend>
-          <p style={hintStyle}>
-            Businesses, dealers and recyclers can add their organisation name
-            and any registration or licence number so others can verify them.
-          </p>
-
-          <label htmlFor="organisationName">Organisation name</label>
-          <input
-            id="organisationName"
-            value={organisationName}
-            onChange={(e) => setOrganisationName(e.target.value)}
-            placeholder="e.g. Green Cafe Pvt Ltd"
-            style={inputStyle}
-          />
-
-          <label htmlFor="registrationId">Registration / licence ID</label>
-          <input
-            id="registrationId"
-            value={registrationId}
-            onChange={(e) => setRegistrationId(e.target.value)}
-            placeholder="e.g. GST, Udyam, CPCB or municipal licence"
-            style={inputStyle}
-          />
-        </fieldset>
+        <Card className="p-5 sm:p-6">
+          <div className="mb-4">
+            <h2 className="font-serif text-xl tracking-tight">
+              Organisation &amp; verification
+            </h2>
+            <p className="mt-1 text-sm text-ash">
+              Businesses, dealers and recyclers can add their organisation name
+              and any registration or licence number so others can verify them.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <div>
+              <Label htmlFor="organisationName">Organisation name</Label>
+              <Input
+                id="organisationName"
+                value={organisationName}
+                onChange={(e) => setOrganisationName(e.target.value)}
+                placeholder="e.g. Green Cafe Pvt Ltd"
+              />
+            </div>
+            <div>
+              <Label htmlFor="registrationId">Registration / licence ID</Label>
+              <Input
+                id="registrationId"
+                value={registrationId}
+                onChange={(e) => setRegistrationId(e.target.value)}
+                placeholder="e.g. GST, Udyam, CPCB or municipal licence"
+              />
+            </div>
+          </div>
+        </Card>
       )}
 
       {isCollectorRole && (
-        <fieldset style={fieldsetStyle}>
-          <legend>Service area &amp; accepted materials</legend>
-          <p style={hintStyle}>
-            Collectors, dealers and recyclers can describe where they operate
-            and which materials they accept.
-          </p>
-
-          <label htmlFor="serviceAreaLocality">Service area</label>
-          <input
-            id="serviceAreaLocality"
-            value={serviceAreaLocality}
-            onChange={(e) => setServiceAreaLocality(e.target.value)}
-            placeholder="e.g. Bengaluru south"
-            style={inputStyle}
-          />
-
-          <label htmlFor="serviceAreaRadiusKm">
-            How far you&apos;ll travel (km)
-          </label>
-          <input
-            id="serviceAreaRadiusKm"
-            type="number"
-            min="0.5"
-            max="500"
-            step="0.5"
-            value={serviceAreaRadiusKm}
-            onChange={(e) => setServiceAreaRadiusKm(e.target.value)}
-            placeholder="10"
-            style={inputStyle}
-          />
-
-          <fieldset style={materialsFieldsetStyle}>
-            <legend style={{ fontSize: "0.9rem" }}>Accepted materials</legend>
-            <div
-              style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem 1rem" }}
-            >
-              {MATERIAL_CATEGORIES.map((category) => (
-                <label
-                  key={category}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.4rem",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={acceptedMaterials.includes(category)}
-                    onChange={() => toggleMaterial(category)}
-                  />
-                  {MATERIAL_LABELS[category]}
-                </label>
-              ))}
+        <Card className="p-5 sm:p-6">
+          <div className="mb-4">
+            <h2 className="font-serif text-xl tracking-tight">
+              Service area &amp; accepted materials
+            </h2>
+            <p className="mt-1 text-sm text-ash">
+              Collectors, dealers and recyclers can describe where they operate
+              and which materials they accept.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <div>
+              <Label htmlFor="serviceAreaLocality">Service area</Label>
+              <Input
+                id="serviceAreaLocality"
+                value={serviceAreaLocality}
+                onChange={(e) => setServiceAreaLocality(e.target.value)}
+                placeholder="e.g. Bengaluru south"
+              />
             </div>
-          </fieldset>
-        </fieldset>
+            <div className="max-w-xs">
+              <Label htmlFor="serviceAreaRadiusKm">
+                How far you&apos;ll travel (km)
+              </Label>
+              <Input
+                id="serviceAreaRadiusKm"
+                type="number"
+                min="0.5"
+                max="500"
+                step="0.5"
+                value={serviceAreaRadiusKm}
+                onChange={(e) => setServiceAreaRadiusKm(e.target.value)}
+                placeholder="10"
+              />
+              <FieldHint>Between 0.5 and 500 km.</FieldHint>
+            </div>
+
+            <fieldset>
+              <legend className="mb-2 text-sm font-medium text-ink">
+                Accepted materials
+              </legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {MATERIAL_CATEGORIES.map((category) => {
+                  const checked = acceptedMaterials.includes(category);
+                  return (
+                    <label
+                      key={category}
+                      className={
+                        "flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition " +
+                        (checked
+                          ? "border-moss/50 bg-moss-soft text-ink"
+                          : "border-dune bg-paper hover:border-ink/30 hover:bg-sand/50")
+                      }
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onChange={() => toggleMaterial(category)}
+                      />
+                      <span>{MATERIAL_LABELS[category]}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          </div>
+        </Card>
       )}
 
-      <button type="submit" disabled={busy} style={buttonStyle}>
-        {busy ? "Saving…" : "Save profile"}
-      </button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={busy} variant="primary" size="lg" className="group">
+          <Save className="h-4 w-4" />
+          {busy ? "Saving…" : "Save profile"}
+        </Button>
+        <span className="text-xs text-ash">Changes appear on your public profile immediately.</span>
+      </div>
     </form>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: "0.6rem 1.2rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const fieldsetStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem 1rem 0",
-  margin: "0 0 1rem",
-};
-
-const materialsFieldsetStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.5rem 0.8rem",
-  margin: "0 0 0.6rem",
-};
-
-const hintStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0 0 0.6rem",
-};

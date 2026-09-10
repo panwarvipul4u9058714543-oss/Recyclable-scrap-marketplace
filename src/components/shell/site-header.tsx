@@ -9,6 +9,7 @@ import {
   SELLER_ROLES,
 } from "@/lib/roles";
 import { HeaderAuthArea } from "./header-auth-area";
+import { MobileNav } from "./mobile-nav";
 
 /**
  * Top navigation shown on every page. Server-rendered so it can read the
@@ -67,7 +68,14 @@ export async function SiteHeader() {
         )}
 
         <div className="ml-auto flex items-center gap-3">
-          <HeaderAuthArea
+          <div className="hidden md:flex">
+            <HeaderAuthArea
+              phone={user?.phone ?? null}
+              isAdmin={user?.isAdmin ?? false}
+            />
+          </div>
+          <MobileNav
+            links={links}
             phone={user?.phone ?? null}
             isAdmin={user?.isAdmin ?? false}
           />

@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Bell } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { InlineNote } from "@/components/ui/inline-note";
 
 export function NotificationPreferences({
   initialNotifyOnRouteMatch,
@@ -34,38 +38,34 @@ export function NotificationPreferences({
   }
 
   return (
-    <section
-      aria-label="Notification preferences"
-      style={{ marginTop: "1.5rem" }}
-    >
-      <h2 style={{ fontSize: "1.05rem" }}>Notification preferences</h2>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          padding: "0.5rem 0",
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-        <span>
-          Notify me on <strong>route matches</strong> — new listings that fit
-          your active route.
-        </span>
-      </label>
+    <section aria-label="Notification preferences" className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-serif text-xl tracking-tight">
+          Notification preferences
+        </h2>
+        <Bell className="h-4 w-4 text-ash" />
+      </div>
+      <Card className="p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <Checkbox
+            checked={enabled}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+          <span className="flex-1 text-[15px] leading-relaxed text-ink">
+            Notify me on <strong className="font-medium text-rust-ink">route matches</strong> — new listings that fit
+            your active route.
+          </span>
+        </label>
+      </Card>
       {status === "saved" && (
-        <p role="status" style={{ color: "#81c784", fontSize: "0.85rem" }}>
+        <InlineNote tone="ok" className="text-xs">
           Preferences saved.
-        </p>
+        </InlineNote>
       )}
       {status === "error" && (
-        <p role="alert" style={{ color: "#ff8a80", fontSize: "0.85rem" }}>
+        <InlineNote tone="err" className="text-xs">
           Couldn&apos;t save. Please try again.
-        </p>
+        </InlineNote>
       )}
     </section>
   );

@@ -105,7 +105,7 @@ export default async function DashboardPage() {
   });
   actions.push({
     href: "/profile",
-    label: "Edit profile",
+    label: "Edit your profile",
     hint: "Your area, service radius, ratings.",
     Icon: UserRound,
   });
@@ -143,10 +143,11 @@ export default async function DashboardPage() {
             <span className="inline-block h-px w-8 bg-rust" />
             Signed in
           </p>
-          <h1 className="font-serif text-hero text-ink">
+          <h1 className="sr-only">Your dashboard</h1>
+          <p className="font-serif text-hero text-ink" aria-hidden>
             Namaste,{" "}
             <span className="italic text-rust">{user.phone}</span>
-          </h1>
+          </p>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-ash">
             One ledger for the everyday scrap trade. Below, only the workflows
             your roles unlock — cleaner than a menu, honest about what you can
