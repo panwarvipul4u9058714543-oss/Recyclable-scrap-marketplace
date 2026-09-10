@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm-neutral surface with a rust primary and a moss secondary — chosen
+     * against the AI-cliché purple/blue palette. Values are HSL triplets so
+     * Tailwind's <alpha-value> substitution works. */
+    --paper: 42 40% 96%;
+    --ink: 30 12% 12%;
+    --sand: 38 34% 90%;
+    --dune: 34 24% 82%;
+    --ash: 30 8% 42%;
+
+    --rust: 15 72% 42%;
+    --rust-soft: 20 55% 92%;
+    --rust-ink: 15 60% 24%;
+
+    --moss: 128 22% 22%;
+    --moss-soft: 120 28% 92%;
+
+    --signal-ok: 152 48% 34%;
+    --signal-warn: 32 92% 44%;
+    --signal-err: 4 68% 46%;
+  }
+
+  .dark {
+    --paper: 30 10% 8%;
+    --ink: 40 25% 92%;
+    --sand: 30 8% 14%;
+    --dune: 30 8% 22%;
+    --ash: 34 8% 62%;
+
+    --rust: 18 78% 62%;
+    --rust-soft: 15 30% 20%;
+    --rust-ink: 20 88% 82%;
+
+    --moss: 128 20% 68%;
+    --moss-soft: 128 20% 18%;
+
+    --signal-ok: 148 40% 62%;
+    --signal-warn: 36 88% 66%;
+    --signal-err: 6 68% 66%;
+  }
+
+  * {
+    @apply border-dune/60;
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  html,
+  body {
+    @apply bg-paper text-ink antialiased;
+    font-feature-settings:
+      "cv02" on,
+      "cv03" on,
+      "cv04" on,
+      "ss01" on;
+  }
+
+  ::selection {
+    background: hsl(var(--rust) / 0.22);
+    color: hsl(var(--rust-ink));
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-serif tracking-tight text-ink;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+
+  /* Fine-grid backdrop used sparingly on hero surfaces to add texture without
+   * looking like a stock landing page. */
+  .surface-grain {
+    background-image:
+      radial-gradient(hsl(var(--ink) / 0.055) 1px, transparent 1px),
+      linear-gradient(180deg, hsl(var(--sand) / 0.4), transparent 40%);
+    background-size:
+      4px 4px,
+      100% 100%;
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  .rule {
+    @apply h-px w-full bg-dune/70;
+  }
+}
+
+@layer utilities {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rust/70 focus-visible:ring-offset-2 focus-visible:ring-offset-paper;
+  }
+}

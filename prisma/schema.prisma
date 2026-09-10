@@ -1,0 +1,587 @@
+// Prisma schema for the Recyclable Scrap Marketplace.
+// Step 2 introduces the accounts domain: users, multi-role support, mocked
+// phone verification, and sessions. Step 3 adds scrap listings. Step 4 adds
+// coordinates for nearby-discovery filters. Issue #3 step 1 adds the
+// buyer–seller interest/connection primitives; steps 2–3 add reservation
+// expiry, in-app chat and mutual contact-reveal timestamps. Issue #4 step 2
+// adds per-user Profile with identity, organisation and service-area fields.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A marketplace participant, identified by a verified phone number. `isAdmin`
+// gates the operator moderation surface; `suspendedAt` / `suspensionReason`
+// mark an account an operator has suspended for repeated no-shows,
+// harassment, fraud or unsafe behaviour — a suspended user can sign in but
+// service-level writes are refused and their listings drop out of discovery.
+model User {
+  id                   String    @id @default(cuid())
+  phone                String    @unique
+  phoneVerifiedAt      DateTime?
+  isAdmin              Boolean   @default(false)
+  suspendedAt          DateTime?
+  suspensionReason     String?
+  notifyOnRouteMatch   Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  roles               UserRole[]
+  sessions            Session[]
+  listings            Listing[]
+  interests           Interest[]          @relation("CollectorInterests")
+  buyerConnections    Connection[]        @relation("BuyerConnections")
+  sellerConnections   Connection[]        @relation("SellerConnections")
+  profile             Profile?
+  reportsFiled        Report[]            @relation("ReportsFiled")
+  reportsReviewed     Report[]            @relation("ReportsReviewed")
+  blocksIssued        Block[]             @relation("BlocksIssued")
+  blocksReceived      Block[]             @relation("BlocksReceived")
+  ratingsGiven        Rating[]            @relation("RatingsGiven")
+  ratingsReceived     Rating[]            @relation("RatingsReceived")
+  routes              Route[]
+  routeNotifications  RouteNotification[]
+  bulkRequirements    BulkRequirement[]
+  bulkResponsesAsSupplier BulkResponse[] @relation("BulkResponsesAsSupplier")
+  savedSearches       SavedSearch[]
+  savedSearchAlerts   SavedSearchAlert[]
+  promotions          Promotion[]         @relation("PromotionsPurchased")
+  subscriptions       PremiumSubscription[] @relation("SubscriberSubscriptions")
+}
+
+// A user's public-facing profile. Every field is optional so the profile can
+// grow over time; the row itself is created on first update. `acceptedMaterials`
+// is a JSON-encoded array of MaterialCategory values (SQLite has no native
+// array type) and `serviceAreaRadiusKm` / `serviceAreaLocality` describe how
+// far a collector-type role will travel. `organisationName` and `registrationId`
+// carry the role-appropriate organisation or verification details for
+// dealers, businesses and recyclers. Reputation is not stored — it is
+// aggregated from Connection at read time.
+model Profile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  displayName         String?
+  bio                 String?
+  organisationName    String?
+  registrationId      String?
+  serviceAreaLocality String?
+  serviceAreaRadiusKm Float?
+  acceptedMaterials   String? // JSON-encoded array of MaterialCategory
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// One role a user has taken on. A user may hold several roles at once
+// (e.g. a household that is also a small business), so roles live in their
+// own table with a uniqueness constraint per (user, role).
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+}
+
+// A one-time phone-verification challenge. The plaintext code is never
+// stored — only a hash — and each challenge expires and can be consumed once.
+model PhoneVerification {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([phone])
+}
+
+// An authenticated session, referenced by an opaque token stored in a cookie.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// A scrap listing posted by a household or business. The material category is
+// fixed to an ordinary recyclable type (see src/lib/materials.ts); quantity is
+// captured as a min/max range with a unit; locality is an approximate area and
+// latitude/longitude are the coordinates used for nearby-discovery filtering.
+// Photos are stored as a JSON-encoded array of URLs. A listing moves through
+// ACTIVE -> PAUSED (temporarily hidden) and can be CLOSED once and for all.
+model Listing {
+  id               String   @id @default(cuid())
+  sellerId         String
+  sellerType       String // HOUSEHOLD | BUSINESS — the capacity the seller is listing in
+  materialCategory String
+  title            String
+  description      String?
+  photos           String // JSON-encoded array of photo URLs
+  quantityMin      Float
+  quantityMax      Float
+  quantityUnit     String
+  locality         String
+  latitude         Float
+  longitude        Float
+  availability     String
+  status           String   @default("ACTIVE") // ACTIVE | PAUSED | CLOSED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  seller             User                @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  interests          Interest[]
+  connections        Connection[]
+  routeNotifications RouteNotification[]
+  savedSearchAlerts  SavedSearchAlert[]
+  promotions         Promotion[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([materialCategory])
+}
+
+// A collector's expression of interest in a listing. One row per
+// (collector, listing) pair; withdrawing simply deletes the row. Interests
+// are a lightweight signal used by the seller to pick a buyer — they do not
+// reserve the listing on their own.
+model Interest {
+  id          String   @id @default(cuid())
+  listingId   String
+  collectorId String
+  createdAt   DateTime @default(now())
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  collector User    @relation("CollectorInterests", fields: [collectorId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, collectorId])
+  @@index([listingId])
+  @@index([collectorId])
+}
+
+// The seller's pick of a buyer for a listing. Selection creates the connection
+// in RESERVED state with an expiry; either party can cancel, mark completed
+// or mark failed, and an unattended reservation transitions to EXPIRED on
+// the next read. `sellerRevealedAt` / `collectorRevealedAt` back the mutual
+// contact-reveal flow — exact phone numbers and pickup coordinates become
+// visible only once both are set. `actualQuantity`, `finalPrice` and
+// `failureReason` capture optional pickup outcome details separately from
+// the listing's original estimate. A listing may hold at most one
+// non-terminal connection at a time; the service layer enforces this.
+model Connection {
+  id                  String    @id @default(cuid())
+  listingId           String
+  sellerId            String
+  collectorId         String
+  status              String    @default("RESERVED") // RESERVED | CANCELLED | EXPIRED | COMPLETED | FAILED
+  expiresAt           DateTime
+  sellerRevealedAt    DateTime?
+  collectorRevealedAt DateTime?
+  actualQuantity      Float?
+  finalPrice          Float?
+  failureReason       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seller    User      @relation("SellerConnections", fields: [sellerId], references: [id], onDelete: Cascade)
+  collector User      @relation("BuyerConnections", fields: [collectorId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  ratings   Rating[]
+
+  @@index([listingId])
+  @@index([sellerId])
+  @@index([collectorId])
+  @@index([status])
+}
+
+// A report of a listing or a user, filed by any signed-in user for operator
+// review. `targetType` is either "USER" or "LISTING"; the target row is not
+// FK-referenced (a listing may be deleted and the report should survive).
+// `status` moves OPEN -> RESOLVED | DISMISSED once an operator has acted;
+// `reviewNote` is an optional short operator note attached at that point.
+model Report {
+  id           String    @id @default(cuid())
+  reporterId   String
+  targetType   String // USER | LISTING
+  targetId     String
+  reason       String
+  details      String?
+  status       String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  reporter User  @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReportsReviewed", fields: [reviewedById], references: [id])
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([reporterId])
+}
+
+// A user's block of another user. The relation is one-way from the blocker's
+// perspective but is treated symmetrically at the interaction gates (a block
+// prevents interest, messaging and buyer selection in either direction).
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksIssued", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+// A rating one party leaves for the counterparty after a terminal connection
+// (COMPLETED or FAILED). Score is 1..5; comment is optional. One rating per
+// (connection, rater) so each party can rate the other exactly once per
+// connection.
+model Rating {
+  id           String   @id @default(cuid())
+  connectionId String
+  raterId      String
+  rateeId      String
+  score        Int
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  rater      User       @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
+  ratee      User       @relation("RatingsReceived", fields: [rateeId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, raterId])
+  @@index([rateeId])
+  @@index([connectionId])
+}
+
+// A collector's route mode session. The collector supplies an origin, a
+// destination and a travel window; the marketplace uses the row to match
+// active listings that fall along the trip within an acceptable detour.
+// Route mode is deliberately submit-once (not a live tracker) — the collector
+// sets it up before driving and reviews matches after arrival. Only one
+// route per collector is ACTIVE at a time; ending the route stamps
+// `endedAt` and moves it to a terminal state. `acceptedMaterials` is a
+// JSON-encoded array of MaterialCategory values (empty = accept any).
+model Route {
+  id                String    @id @default(cuid())
+  collectorId       String
+  originLatitude    Float
+  originLongitude   Float
+  destLatitude      Float
+  destLongitude     Float
+  departAt          DateTime
+  arriveByAt        DateTime
+  acceptedMaterials String // JSON-encoded array of MaterialCategory ("[]" = any)
+  maxDetourKm       Float
+  minQuantity       Float?
+  minQuantityUnit   String? // required when minQuantity is set
+  status            String    @default("ACTIVE") // ACTIVE | ENDED
+  endedAt           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  collector          User                @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  routeNotifications RouteNotification[]
+
+  @@index([collectorId])
+  @@index([status])
+}
+
+// A notification that a newly-created Listing matches an ACTIVE Route the
+// collector opened. Fanned out at listing-create time so the notification is
+// only ever seen by collectors whose route filters (materials, minQuantity,
+// maxDetour) actually match — no batch spam. Unique on (collectorId,
+// listingId) so re-running the fan-out never produces duplicates. `seenAt`
+// stamps when the collector opens the notification.
+model RouteNotification {
+  id          String    @id @default(cuid())
+  collectorId String
+  routeId     String
+  listingId   String
+  seenAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  collector User    @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+  route     Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([collectorId, listingId])
+  @@index([collectorId])
+  @@index([routeId])
+}
+
+// A bulk buy requirement published by a dealer, business or recycler for
+// larger or recurring supply. Suppliers (small collectors and dealers) browse
+// these on /bulk/browse and can respond with what they have. `region` is a
+// free-form service area label used for text-match filtering; deadlineAt is
+// an optional pickup-by date. `acceptedMaterials` is JSON-encoded (SQLite has
+// no native array type); `qualityNotes` is a short free-form field for
+// grade / condition expectations. A requirement moves ACTIVE -> CLOSED once
+// the buyer no longer needs it (a service call, not a scheduled sweep).
+model BulkRequirement {
+  id                String    @id @default(cuid())
+  buyerId           String
+  material          String
+  minQuantity       Float
+  minQuantityUnit   String
+  qualityNotes      String?
+  region            String
+  deadlineAt        DateTime?
+  status            String    @default("ACTIVE") // ACTIVE | CLOSED
+  closedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  buyer User @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  responses BulkResponse[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([material])
+}
+
+// A supplier's response to a bulk buy requirement. Starts PENDING (a signal
+// of interest with the offered quantity + notes); the buyer picks one to
+// SELECTED, which opens the chat + mutual contact reveal + outcome flow —
+// the same shape as household connections but scoped to one requirement.
+// At most one non-terminal (PENDING or SELECTED) response per
+// (requirement, supplier). Terminal states: WITHDRAWN, CANCELLED,
+// COMPLETED, FAILED.
+model BulkResponse {
+  id                  String    @id @default(cuid())
+  requirementId       String
+  supplierId          String
+  offeredQuantity     Float
+  offeredQuantityUnit String
+  notes               String?
+  status              String    @default("PENDING") // PENDING | WITHDRAWN | SELECTED | CANCELLED | COMPLETED | FAILED
+  selectedAt          DateTime?
+  expiresAt           DateTime?
+  buyerRevealedAt     DateTime?
+  supplierRevealedAt  DateTime?
+  actualQuantity      Float?
+  finalPrice          Float?
+  failureReason       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  requirement BulkRequirement       @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  supplier    User                  @relation("BulkResponsesAsSupplier", fields: [supplierId], references: [id], onDelete: Cascade)
+  messages    BulkResponseMessage[]
+
+  @@index([requirementId])
+  @@index([supplierId])
+  @@index([status])
+}
+
+// A bulk buyer's saved search over active supply listings. When a new
+// ACTIVE Listing is created that matches the search (material,
+// supplyMinQuantity + unit, region substring), a `SavedSearchAlert` row is
+// fanned out to that buyer. The per-search `alertsEnabled` toggle gates the
+// fan-out at write time so buyers who paused a search never receive rows
+// from it. A buyer may have many saved searches.
+model SavedSearch {
+  id                    String   @id @default(cuid())
+  buyerId               String
+  name                  String
+  material              String?
+  supplyMinQuantity     Float?
+  supplyMinQuantityUnit String?
+  region                String?
+  alertsEnabled         Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  buyer  User                @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  alerts SavedSearchAlert[]
+
+  @@index([buyerId])
+}
+
+// One alert: a Listing matched one of the buyer's SavedSearches. Unique on
+// (savedSearchId, listingId) so a repeated fan-out is a no-op — matches the
+// route-notification pattern.
+model SavedSearchAlert {
+  id            String    @id @default(cuid())
+  savedSearchId String
+  buyerId       String
+  listingId     String
+  seenAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  savedSearch SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  buyer       User        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  listing     Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([savedSearchId, listingId])
+  @@index([buyerId])
+}
+
+// A chat message on a SELECTED bulk response. Either party may post while
+// the response is SELECTED; cancelled / completed / failed responses are
+// read-only.
+model BulkResponseMessage {
+  id         String   @id @default(cuid())
+  responseId String
+  senderId   String
+  body       String
+  createdAt  DateTime @default(now())
+
+  response BulkResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
+}
+
+// A chat message on a connection. Either party may post while the connection
+// is RESERVED; cancelled/expired connections are read-only.
+model Message {
+  id           String   @id @default(cuid())
+  connectionId String
+  senderId     String
+  body         String
+  createdAt    DateTime @default(now())
+
+  connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
+}
+
+// A single operational event, emitted by services on every state-changing
+// seam so operators can measure how the marketplace actually creates value:
+// listings posted, listings viewed, leads (interests), reservations, mutual
+// contact reveals, outcomes, route activity, bulk activity, and the
+// registration boundary that stands in for the "download". Rows are
+// insert-only — never updated — so a KPI reading them is stable over time.
+// `type` is the event name (see src/lib/analytics/events.ts for the enum);
+// `channel` splits household discovery from route-mode and bulk-marketplace
+// activity; `subjectType`/`subjectId` name the primary domain row the event
+// concerns (Listing, Connection, BulkResponse, ...); `material`, `locality`
+// and `actorRole` are denormalised so density queries stay index-fast without
+// joining back to the source row; `metadata` is a JSON blob for anything
+// else (e.g. a failure reason, a numeric outcome). Recording is best-effort
+// and never fails a write path — see `recordEvent` for the try/swallow.
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  type        String
+  channel     String   @default("GENERAL")
+  actorId     String?
+  actorRole   String?
+  subjectType String?
+  subjectId   String?
+  material    String?
+  locality    String?
+  metadata    String? // JSON-encoded free-form payload
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([channel, createdAt])
+  @@index([subjectType, subjectId])
+  @@index([actorId])
+  @@index([material])
+  @@index([locality])
+}
+
+// A paid promotion of a Listing purchased by a professional seller (dealer,
+// business or recycler). Households and small collectors cannot buy
+// promotions — basic listing and discovery stay free per issue #8 acceptance
+// criteria. The promotion does NOT change the direct-negotiation or
+// direct-payment model — it only boosts visibility in discovery and marks
+// the listing so buyers can see it is promoted. `priceCents` is the
+// declared price for the tier, recorded so operators can measure revenue-
+// declared; no real payment is processed in this initial release.
+// Lifecycle: PENDING (purchased) -> ACTIVE (activated at startsAt) ->
+// EXPIRED (endsAt passed) or CANCELLED. The service marks PENDING rows
+// ACTIVE lazily on read once their startsAt has passed.
+model Promotion {
+  id           String    @id @default(cuid())
+  listingId    String
+  promoterId   String
+  tier         String // STANDARD | PREMIUM
+  status       String    @default("PENDING") // PENDING | ACTIVE | EXPIRED | CANCELLED
+  priceCents   Int
+  startsAt     DateTime  @default(now())
+  endsAt       DateTime
+  activatedAt  DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  promoter User    @relation("PromotionsPurchased", fields: [promoterId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([promoterId])
+  @@index([status])
+  @@index([endsAt])
+}
+
+// An optional premium subscription for a professional user (dealer, business,
+// recycler). Grants access to business tools — a monthly analytics digest,
+// higher promoted-listing quota, priority in saved-search alerts — without
+// changing the direct-negotiation model. Lifecycle: ACTIVE (subscribed) ->
+// CANCELLED (user cancelled) or EXPIRED (endsAt passed). Exactly one non-
+// terminal subscription per user at a time — the service enforces this.
+model PremiumSubscription {
+  id            String    @id @default(cuid())
+  subscriberId  String
+  plan          String // BUSINESS | PRO
+  status        String    @default("ACTIVE") // ACTIVE | CANCELLED | EXPIRED
+  priceCents    Int
+  startsAt      DateTime  @default(now())
+  endsAt        DateTime
+  cancelledAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscriber User @relation("SubscriberSubscriptions", fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@index([subscriberId])
+  @@index([status])
+  @@index([endsAt])
+}
+
+// An operator-configured advertising placement. Rendered on a surface
+// (currently DISCOVERY, BULK_BROWSE or DASHBOARD) as a distinct block that
+// never blocks the core transaction flow. `status` is ACTIVE or PAUSED;
+// only ACTIVE placements are ever rendered. Views and clicks are counted
+// in AnalyticsEvent (AD_PLACEMENT_IMPRESSION, AD_PLACEMENT_CLICK) so
+// operators can measure exposure and activation of paid inventory.
+model AdPlacement {
+  id          String    @id @default(cuid())
+  surface     String // DISCOVERY | BULK_BROWSE | DASHBOARD
+  headline    String
+  body        String
+  linkUrl     String
+  sponsorName String?
+  status      String    @default("ACTIVE") // ACTIVE | PAUSED
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([surface, status])
+  @@index([endsAt])
+}
