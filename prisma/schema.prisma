@@ -465,3 +465,38 @@ model Message {
 
   @@index([connectionId])
 }
+
+// A single operational event, emitted by services on every state-changing
+// seam so operators can measure how the marketplace actually creates value:
+// listings posted, listings viewed, leads (interests), reservations, mutual
+// contact reveals, outcomes, route activity, bulk activity, and the
+// registration boundary that stands in for the "download". Rows are
+// insert-only — never updated — so a KPI reading them is stable over time.
+// `type` is the event name (see src/lib/analytics/events.ts for the enum);
+// `channel` splits household discovery from route-mode and bulk-marketplace
+// activity; `subjectType`/`subjectId` name the primary domain row the event
+// concerns (Listing, Connection, BulkResponse, ...); `material`, `locality`
+// and `actorRole` are denormalised so density queries stay index-fast without
+// joining back to the source row; `metadata` is a JSON blob for anything
+// else (e.g. a failure reason, a numeric outcome). Recording is best-effort
+// and never fails a write path — see `recordEvent` for the try/swallow.
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  type        String
+  channel     String   @default("GENERAL")
+  actorId     String?
+  actorRole   String?
+  subjectType String?
+  subjectId   String?
+  material    String?
+  locality    String?
+  metadata    String? // JSON-encoded free-form payload
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([channel, createdAt])
+  @@index([subjectType, subjectId])
+  @@index([actorId])
+  @@index([material])
+  @@index([locality])
+}

@@ -1,5 +1,6 @@
 import type { Listing, SavedSearch, SavedSearchAlert } from "@prisma/client";
 import { z } from "zod";
+import { recordEvent } from "@/lib/analytics/events";
 import { listBlockedByIds, listBlockedIds } from "@/lib/blocks/blocks";
 import { db } from "@/lib/db";
 import {
@@ -289,12 +290,22 @@ export async function fanOutSavedSearchesForNewListing(
     if (blockedBuyers.has(search.buyerId)) continue;
     if (alreadyNotified.has(search.id)) continue;
     if (!searchMatchesListing(search, listing)) continue;
-    await db.savedSearchAlert.create({
+    const alert = await db.savedSearchAlert.create({
       data: {
         savedSearchId: search.id,
         buyerId: search.buyerId,
         listingId: listing.id,
       },
+    });
+    await recordEvent({
+      type: "SAVED_SEARCH_ALERT_CREATED",
+      channel: "BULK",
+      actorId: search.buyerId,
+      subjectType: "SAVED_SEARCH_ALERT",
+      subjectId: alert.id,
+      material: listing.materialCategory,
+      locality: listing.locality,
+      metadata: { savedSearchId: search.id, listingId: listing.id },
     });
     written += 1;
   }

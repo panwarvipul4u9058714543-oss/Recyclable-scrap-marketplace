@@ -1,5 +1,6 @@
 import type { BulkResponse, BulkResponseMessage } from "@prisma/client";
 import { z } from "zod";
+import { recordEvent } from "@/lib/analytics/events";
 import { isBlockedEitherWay } from "@/lib/blocks/blocks";
 import { db } from "@/lib/db";
 import { quantityUnitSchema, type QuantityUnit } from "@/lib/materials";
@@ -8,6 +9,21 @@ import {
   BULK_SUPPLIER_ROLES,
   type Role,
 } from "@/lib/roles";
+
+async function requirementContext(requirementId: string) {
+  try {
+    const req = await db.bulkRequirement.findUnique({
+      where: { id: requirementId },
+      select: { material: true, region: true },
+    });
+    return {
+      material: req?.material ?? null,
+      locality: req?.region ?? null,
+    };
+  } catch {
+    return { material: null, locality: null };
+  }
+}
 
 /**
  * Bulk response lifecycle. Parallel to the household Connection lifecycle,
@@ -217,6 +233,21 @@ export async function respondToBulkRequirement(
       notes: data.notes ?? null,
     },
   });
+  const ctx = await requirementContext(requirementId);
+  await recordEvent({
+    type: "BULK_RESPONSE_CREATED",
+    channel: "BULK",
+    actorId: supplierId,
+    subjectType: "BULK_RESPONSE",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: {
+      requirementId,
+      offeredQuantity: data.offeredQuantity,
+      offeredQuantityUnit: data.offeredQuantityUnit,
+    },
+  });
   return toDTO(row);
 }
 
@@ -303,6 +334,20 @@ export async function selectBulkResponse(
       expiresAt: new Date(now.getTime() + BULK_RESERVATION_TTL_MS),
     },
   });
+  const ctx = await requirementContext(row.requirementId);
+  await recordEvent({
+    type: "BULK_RESPONSE_SELECTED",
+    channel: "BULK",
+    actorId: buyerId,
+    subjectType: "BULK_RESPONSE",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: {
+      requirementId: row.requirementId,
+      supplierId: row.supplierId,
+    },
+  });
   return toDTO(updated);
 }
 
@@ -317,6 +362,16 @@ export async function cancelBulkResponse(
   const updated = await db.bulkResponse.update({
     where: { id: responseId },
     data: { status: "CANCELLED" },
+  });
+  const ctx = await requirementContext(row.requirementId);
+  await recordEvent({
+    type: "BULK_RESPONSE_CANCELLED",
+    channel: "BULK",
+    actorId: userId,
+    subjectType: "BULK_RESPONSE",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
   });
   return toDTO(updated);
 }
@@ -398,6 +453,20 @@ export async function revealBulkContact(
     where: { id: responseId },
     data: patch,
   });
+  const bothRevealed =
+    updated.buyerRevealedAt !== null && updated.supplierRevealedAt !== null;
+  if (bothRevealed) {
+    const ctx = await requirementContext(row.requirementId);
+    await recordEvent({
+      type: "BULK_MUTUAL_REVEAL_COMPLETED",
+      channel: "BULK",
+      actorId: userId,
+      subjectType: "BULK_RESPONSE",
+      subjectId: row.id,
+      material: ctx.material,
+      locality: ctx.locality,
+    });
+  }
   return toDTO(updated);
 }
 
@@ -463,6 +532,24 @@ export async function markBulkCompleted(
       failureReason: null,
     },
   });
+  const ctx = await requirementContext(row.requirementId);
+  await recordEvent({
+    type: "BULK_RESPONSE_COMPLETED",
+    channel: "BULK",
+    actorId: userId,
+    subjectType: "BULK_RESPONSE",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: {
+      actualQuantity: patch.actualQuantity,
+      finalPrice: patch.finalPrice,
+      responseSeconds: Math.max(
+        0,
+        Math.round((Date.now() - row.createdAt.getTime()) / 1000),
+      ),
+    },
+  });
   return toDTO(updated);
 }
 
@@ -483,6 +570,21 @@ export async function markBulkFailed(
       actualQuantity: patch.actualQuantity,
       finalPrice: patch.finalPrice,
       failureReason: patch.failureReason,
+    },
+  });
+  const ctx = await requirementContext(row.requirementId);
+  await recordEvent({
+    type: "BULK_RESPONSE_FAILED",
+    channel: "BULK",
+    actorId: userId,
+    subjectType: "BULK_RESPONSE",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: {
+      failureReason: patch.failureReason,
+      actualQuantity: patch.actualQuantity,
+      finalPrice: patch.finalPrice,
     },
   });
   return toDTO(updated);

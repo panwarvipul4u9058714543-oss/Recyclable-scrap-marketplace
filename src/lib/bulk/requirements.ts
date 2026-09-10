@@ -1,5 +1,6 @@
 import type { BulkRequirement } from "@prisma/client";
 import { z } from "zod";
+import { recordEvent } from "@/lib/analytics/events";
 import { listBlockedByIds, listBlockedIds } from "@/lib/blocks/blocks";
 import { db } from "@/lib/db";
 import {
@@ -173,6 +174,19 @@ export async function createBulkRequirement(
 
   const row = await db.bulkRequirement.create({
     data: { buyerId, ...toWriteData(data) },
+  });
+  await recordEvent({
+    type: "BULK_REQUIREMENT_CREATED",
+    channel: "BULK",
+    actorId: buyerId,
+    subjectType: "BULK_REQUIREMENT",
+    subjectId: row.id,
+    material: data.material,
+    locality: data.region,
+    metadata: {
+      minQuantity: data.minQuantity,
+      minQuantityUnit: data.minQuantityUnit,
+    },
   });
   return toDTO(row);
 }

@@ -1,5 +1,6 @@
 import type { Route } from "@prisma/client";
 import { z } from "zod";
+import { recordEvent } from "@/lib/analytics/events";
 import { listBlockedByIds, listBlockedIds } from "@/lib/blocks/blocks";
 import { listingIdsWithActiveReservation } from "@/lib/connections/connections";
 import { db } from "@/lib/db";
@@ -165,6 +166,20 @@ export async function startRoute(
       departAt: data.departAt,
       arriveByAt: data.arriveByAt,
       acceptedMaterials: JSON.stringify(data.acceptedMaterials),
+      maxDetourKm: data.maxDetourKm,
+      minQuantity: data.minQuantity ?? null,
+      minQuantityUnit: data.minQuantityUnit ?? null,
+    },
+  });
+
+  await recordEvent({
+    type: "ROUTE_STARTED",
+    channel: "ROUTE",
+    actorId: collectorId,
+    subjectType: "ROUTE",
+    subjectId: row.id,
+    metadata: {
+      acceptedMaterials: data.acceptedMaterials,
       maxDetourKm: data.maxDetourKm,
       minQuantity: data.minQuantity ?? null,
       minQuantityUnit: data.minQuantityUnit ?? null,

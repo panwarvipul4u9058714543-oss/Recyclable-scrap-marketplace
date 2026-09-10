@@ -1,8 +1,48 @@
 import type { Connection, Interest, Message } from "@prisma/client";
+import {
+  type AnalyticsChannel,
+  recordEvent,
+} from "@/lib/analytics/events";
 import { db } from "@/lib/db";
 import { isBlockedEitherWay } from "@/lib/blocks/blocks";
 import { isUserSuspended } from "@/lib/moderation/moderation";
 import { COLLECTOR_ROLES } from "@/lib/roles";
+
+/**
+ * Look up whether an interest expressed on this listing came in through
+ * route mode, so the analytics channel is HOUSEHOLD unless we can prove
+ * otherwise. A route notification for the same (collector, listing) is a
+ * cheap signal that the collector saw the listing via /route.
+ */
+async function inferInterestChannel(
+  collectorId: string,
+  listingId: string,
+): Promise<AnalyticsChannel> {
+  try {
+    const notif = await db.routeNotification.findFirst({
+      where: { collectorId, listingId },
+      select: { id: true },
+    });
+    return notif ? "ROUTE" : "HOUSEHOLD";
+  } catch {
+    return "HOUSEHOLD";
+  }
+}
+
+async function listingContext(listingId: string) {
+  try {
+    const listing = await db.listing.findUnique({
+      where: { id: listingId },
+      select: { materialCategory: true, locality: true },
+    });
+    return {
+      material: listing?.materialCategory ?? null,
+      locality: listing?.locality ?? null,
+    };
+  } catch {
+    return { material: null, locality: null };
+  }
+}
 
 /** Connection lifecycle. Step 1 introduced the row; steps 2–3 add reservation
  * expiry and chat/mutual-contact-reveal; step 4 adds the terminal COMPLETED
@@ -230,12 +270,34 @@ export async function expressInterest(
     throw new ConnectionError("blocked");
   }
 
-  const row = await db.interest.upsert({
+  const existing = await db.interest.findUnique({
     where: { listingId_collectorId: { listingId, collectorId } },
-    create: { listingId, collectorId },
-    update: {},
     include: { collector: { select: { phone: true } } },
   });
+  const row =
+    existing ??
+    (await db.interest.create({
+      data: { listingId, collectorId },
+      include: { collector: { select: { phone: true } } },
+    }));
+
+  // Only record on the first (non-idempotent) expression.
+  if (!existing) {
+    const [channel, ctx] = await Promise.all([
+      inferInterestChannel(collectorId, listingId),
+      listingContext(listingId),
+    ]);
+    await recordEvent({
+      type: "INTEREST_EXPRESSED",
+      channel,
+      actorId: collectorId,
+      subjectType: "INTEREST",
+      subjectId: row.id,
+      material: ctx.material,
+      locality: ctx.locality,
+      metadata: { listingId, sellerId: listing.sellerId },
+    });
+  }
 
   return interestToDTO(row);
 }
@@ -311,6 +373,17 @@ export async function selectBuyer(
       status: "RESERVED",
       expiresAt: new Date(Date.now() + RESERVATION_TTL_MS),
     },
+  });
+  const ctx = await listingContext(listingId);
+  await recordEvent({
+    type: "CONNECTION_RESERVED",
+    channel: "HOUSEHOLD",
+    actorId: sellerId,
+    subjectType: "CONNECTION",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: { listingId, collectorId },
   });
   return connectionToDTO(row);
 }
@@ -438,6 +511,16 @@ export async function cancelConnection(
     where: { id: row.id },
     data: { status: "CANCELLED" },
   });
+  const ctx = await listingContext(row.listingId);
+  await recordEvent({
+    type: "CONNECTION_CANCELLED",
+    channel: "HOUSEHOLD",
+    actorId: userId,
+    subjectType: "CONNECTION",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+  });
   return connectionToDTO(updated);
 }
 
@@ -466,6 +549,20 @@ export async function revealContact(
     where: { id: row.id },
     data: patch,
   });
+  const bothRevealed =
+    updated.sellerRevealedAt !== null && updated.collectorRevealedAt !== null;
+  if (bothRevealed) {
+    const ctx = await listingContext(row.listingId);
+    await recordEvent({
+      type: "MUTUAL_REVEAL_COMPLETED",
+      channel: "HOUSEHOLD",
+      actorId: userId,
+      subjectType: "CONNECTION",
+      subjectId: row.id,
+      material: ctx.material,
+      locality: ctx.locality,
+    });
+  }
   return connectionToDTO(updated);
 }
 
@@ -546,6 +643,24 @@ export async function markCompleted(
       failureReason: null,
     },
   });
+  const ctx = await listingContext(row.listingId);
+  await recordEvent({
+    type: "CONNECTION_COMPLETED",
+    channel: "HOUSEHOLD",
+    actorId: userId,
+    subjectType: "CONNECTION",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: {
+      actualQuantity: patch.actualQuantity,
+      finalPrice: patch.finalPrice,
+      responseSeconds: Math.max(
+        0,
+        Math.round((Date.now() - row.createdAt.getTime()) / 1000),
+      ),
+    },
+  });
   return connectionToDTO(updated);
 }
 
@@ -569,6 +684,21 @@ export async function markFailed(
       actualQuantity: patch.actualQuantity,
       finalPrice: patch.finalPrice,
       failureReason: patch.failureReason,
+    },
+  });
+  const ctx = await listingContext(row.listingId);
+  await recordEvent({
+    type: "CONNECTION_FAILED",
+    channel: "HOUSEHOLD",
+    actorId: userId,
+    subjectType: "CONNECTION",
+    subjectId: row.id,
+    material: ctx.material,
+    locality: ctx.locality,
+    metadata: {
+      failureReason: patch.failureReason,
+      actualQuantity: patch.actualQuantity,
+      finalPrice: patch.finalPrice,
     },
   });
   return connectionToDTO(updated);

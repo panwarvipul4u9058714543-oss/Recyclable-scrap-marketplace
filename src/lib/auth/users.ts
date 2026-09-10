@@ -1,4 +1,5 @@
 import type { User } from "@prisma/client";
+import { recordEvent } from "@/lib/analytics/events";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { type Role, roleSelectionSchema } from "@/lib/roles";
@@ -26,6 +27,13 @@ export async function getOrCreateUserByPhone(
   if (existing) return { user: existing, created: false };
 
   const user = await db.user.create({ data: { phone } });
+  await recordEvent({
+    type: "USER_REGISTERED",
+    channel: "GENERAL",
+    actorId: user.id,
+    subjectType: "USER",
+    subjectId: user.id,
+  });
   return { user, created: true };
 }
 

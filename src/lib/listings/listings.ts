@@ -1,5 +1,6 @@
 import type { Listing } from "@prisma/client";
 import { z } from "zod";
+import { recordEvent } from "@/lib/analytics/events";
 import { db } from "@/lib/db";
 import {
   type Availability,
@@ -193,6 +194,21 @@ export async function createListing(
   } catch {
     // ignored
   }
+  await recordEvent({
+    type: "LISTING_CREATED",
+    channel: "HOUSEHOLD",
+    actorId: sellerId,
+    actorRole: data.sellerType,
+    subjectType: "LISTING",
+    subjectId: row.id,
+    material: data.materialCategory,
+    locality: data.locality,
+    metadata: {
+      quantityMin: data.quantityMin,
+      quantityMax: data.quantityMax,
+      quantityUnit: data.quantityUnit,
+    },
+  });
 
   return listingToDTO(row);
 }

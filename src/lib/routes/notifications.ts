@@ -1,4 +1,5 @@
 import type { Listing, RouteNotification } from "@prisma/client";
+import { recordEvent } from "@/lib/analytics/events";
 import { db } from "@/lib/db";
 import { detourKmFor, type RouteDTO } from "@/lib/routes/routes";
 import {
@@ -155,12 +156,22 @@ export async function fanOutForNewListing(
     } as const;
     if (!routeMatchesListing(routeView, listing)) continue;
 
-    await db.routeNotification.create({
+    const notif = await db.routeNotification.create({
       data: {
         collectorId: row.collectorId,
         routeId: row.id,
         listingId: listing.id,
       },
+    });
+    await recordEvent({
+      type: "ROUTE_MATCH_NOTIFIED",
+      channel: "ROUTE",
+      actorId: row.collectorId,
+      subjectType: "ROUTE_NOTIFICATION",
+      subjectId: notif.id,
+      material: listing.materialCategory,
+      locality: listing.locality,
+      metadata: { listingId: listing.id, routeId: row.id },
     });
     written += 1;
   }

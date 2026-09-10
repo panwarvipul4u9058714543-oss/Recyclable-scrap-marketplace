@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recordEvent } from "@/lib/analytics/events";
 import { listBlockedByIds, listBlockedIds } from "@/lib/blocks/blocks";
 import { listingIdsWithActiveReservation } from "@/lib/connections/connections";
 import { db } from "@/lib/db";
@@ -128,5 +129,25 @@ export async function discoverNearby(
     ? withDistance.filter((r) => r.distanceKm <= filters.maxDistanceKm!)
     : withDistance;
 
-  return filtered.sort((a, b) => a.distanceKm - b.distanceKm);
+  const sorted = filtered.sort((a, b) => a.distanceKm - b.distanceKm);
+
+  // Record one view per listing the viewer actually saw. Fired in parallel so
+  // discovery is not slowed down by analytics; each recordEvent already
+  // swallows its own failures.
+  await Promise.all(
+    sorted.map((r) =>
+      recordEvent({
+        type: "LISTING_VIEWED",
+        channel: "HOUSEHOLD",
+        actorId: viewerId,
+        subjectType: "LISTING",
+        subjectId: r.id,
+        material: r.materialCategory,
+        locality: r.locality,
+        metadata: { distanceKm: r.distanceKm },
+      }),
+    ),
+  );
+
+  return sorted;
 }
