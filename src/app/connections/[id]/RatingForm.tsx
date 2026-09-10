@@ -2,6 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Select, Textarea } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface RatingFormProps {
   connectionId: string;
@@ -24,18 +30,21 @@ export function RatingForm({
 
   if (existingScore !== null) {
     return (
-      <section aria-label="Your rating" style={sectionStyle}>
-        <h2 style={{ fontSize: "1.05rem", margin: "0 0 0.4rem" }}>
-          Your rating
-        </h2>
-        <p style={{ margin: 0 }}>
-          You rated {counterpartyLabel} <strong>{existingScore} / 5</strong>.
-        </p>
-        {existingComment && (
-          <p style={{ margin: "0.3rem 0 0", color: "#9e9e9e" }}>
-            &ldquo;{existingComment}&rdquo;
+      <section aria-label="Your rating" className="mt-6">
+        <Card className="p-5">
+          <h2 className="mb-2 flex items-center gap-2 font-serif text-xl tracking-tight">
+            <Star className="h-4 w-4 fill-rust text-rust" /> Your rating
+          </h2>
+          <p className="text-sm text-ink">
+            You rated {counterpartyLabel}{" "}
+            <strong className="font-mono font-medium">{existingScore} / 5</strong>.
           </p>
-        )}
+          {existingComment && (
+            <p className="mt-2 text-sm italic text-ash">
+              &ldquo;{existingComment}&rdquo;
+            </p>
+          )}
+        </Card>
       </section>
     );
   }
@@ -70,71 +79,43 @@ export function RatingForm({
   }
 
   return (
-    <section aria-label="Rate the counterparty" style={sectionStyle}>
-      <h2 style={{ fontSize: "1.05rem", margin: "0 0 0.4rem" }}>
-        Rate {counterpartyLabel}
-      </h2>
-      <form onSubmit={onSubmit}>
-        {error && (
-          <p role="alert" style={{ color: "#ff8a80", margin: "0 0 0.5rem" }}>
-            {error}
-          </p>
-        )}
-        <label htmlFor="rating-score">Score</label>
-        <select
-          id="rating-score"
-          value={score}
-          onChange={(e) => setScore(Number(e.target.value))}
-          style={inputStyle}
-        >
-          {[5, 4, 3, 2, 1].map((n) => (
-            <option key={n} value={n}>
-              {n} — {["Poor", "Fair", "OK", "Good", "Excellent"][n - 1]}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="rating-comment">Comment (optional)</label>
-        <textarea
-          id="rating-comment"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={3}
-          style={inputStyle}
-        />
-        <button type="submit" disabled={busy} style={buttonStyle}>
-          {busy ? "Saving…" : "Submit rating"}
-        </button>
-      </form>
+    <section aria-label="Rate the counterparty" className="mt-6">
+      <Card className="p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-serif text-xl tracking-tight">
+          <Star className="h-4 w-4 text-ash" /> Rate {counterpartyLabel}
+        </h2>
+        <form onSubmit={onSubmit} className="grid gap-4">
+          {error ? <InlineNote tone="err">{error}</InlineNote> : null}
+          <div className="max-w-xs">
+            <Label htmlFor="rating-score">Score</Label>
+            <Select
+              id="rating-score"
+              value={score}
+              onChange={(e) => setScore(Number(e.target.value))}
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} — {["Poor", "Fair", "OK", "Good", "Excellent"][n - 1]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="rating-comment">Comment (optional)</Label>
+            <Textarea
+              id="rating-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <div>
+            <Button type="submit" disabled={busy} variant="primary">
+              {busy ? "Saving…" : "Submit rating"}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </section>
   );
 }
-
-const sectionStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.8rem 1rem",
-  margin: "1rem 0",
-};
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.5rem",
-  margin: "0.35rem 0 0.8rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.95rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};

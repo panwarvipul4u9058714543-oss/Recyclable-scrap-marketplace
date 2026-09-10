@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Compass, Flag, Heart, LocateFixed, Search } from "lucide-react";
+import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Select } from "@/components/ui/input";
+import { FieldHint, Label } from "@/components/ui/label";
 import {
   AVAILABILITY_LABELS,
   AVAILABILITY_OPTIONS,
@@ -27,7 +35,6 @@ interface NearbyResult {
   promoted: { tier: "STANDARD" | "PREMIUM" } | null;
 }
 
-/** Per-listing state for the "I'm interested" toggle. */
 type InterestState = "idle" | "sending" | "done" | "error";
 
 const ALL = "__all__" as const;
@@ -152,288 +159,249 @@ export function NearbyBrowser() {
   }
 
   return (
-    <div>
-      <form onSubmit={onSubmit}>
-        {error && (
-          <p role="alert" style={{ color: "#ff8a80" }}>
-            {error}
-          </p>
-        )}
+    <div className="space-y-6">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
 
-        <fieldset style={fieldsetStyle}>
-          <legend>Search location</legend>
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="lat">Latitude</label>
-              <input
-                id="lat"
-                type="number"
-                step="any"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                style={inputStyle}
-              />
+      <Card className="p-5 sm:p-6">
+        <form onSubmit={onSubmit} className="grid gap-5">
+          <fieldset className="grid gap-3">
+            <legend className="mb-1 text-sm font-medium text-ink">
+              Search location
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="lat">Latitude</Label>
+                <Input
+                  id="lat"
+                  type="number"
+                  step="any"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="lng">Longitude</Label>
+                <Input
+                  id="lng"
+                  type="number"
+                  step="any"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="lng">Longitude</label>
-              <input
-                id="lng"
-                type="number"
-                step="any"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={useMyLocation}
-            style={secondaryButtonStyle}
-          >
-            Use my location
-          </button>
-        </fieldset>
+            <Button
+              type="button"
+              onClick={useMyLocation}
+              variant="secondary"
+              size="sm"
+              className="self-start"
+            >
+              <LocateFixed className="h-3.5 w-3.5" /> Use my location
+            </Button>
+          </fieldset>
 
-        <label htmlFor="material">Material</label>
-        <select
-          id="material"
-          value={material}
-          onChange={(e) => setMaterial(e.target.value)}
-          style={inputStyle}
-        >
-          <option value={ALL}>Any material</option>
-          {MATERIAL_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {MATERIAL_LABELS[c]}
-            </option>
-          ))}
-        </select>
-
-        <label htmlFor="availability">Availability</label>
-        <select
-          id="availability"
-          value={availability}
-          onChange={(e) => setAvailability(e.target.value)}
-          style={inputStyle}
-        >
-          <option value={ALL}>Any availability</option>
-          {AVAILABILITY_OPTIONS.map((a) => (
-            <option key={a} value={a}>
-              {AVAILABILITY_LABELS[a]}
-            </option>
-          ))}
-        </select>
-
-        <fieldset style={fieldsetStyle}>
-          <legend>Minimum quantity</legend>
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="minQuantity">At least</label>
-              <input
-                id="minQuantity"
-                type="number"
-                min="0"
-                step="any"
-                value={minQuantity}
-                onChange={(e) => setMinQuantity(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="quantityUnit">Unit</label>
-              <select
-                id="quantityUnit"
-                value={quantityUnit}
-                onChange={(e) => setQuantityUnit(e.target.value)}
-                style={inputStyle}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="material">Material</Label>
+              <Select
+                id="material"
+                value={material}
+                onChange={(e) => setMaterial(e.target.value)}
               >
-                {QUANTITY_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {QUANTITY_UNIT_LABELS[u]}
+                <option value={ALL}>Any material</option>
+                {MATERIAL_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {MATERIAL_LABELS[c]}
                   </option>
                 ))}
-              </select>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="availability">Availability</Label>
+              <Select
+                id="availability"
+                value={availability}
+                onChange={(e) => setAvailability(e.target.value)}
+              >
+                <option value={ALL}>Any availability</option>
+                {AVAILABILITY_OPTIONS.map((a) => (
+                  <option key={a} value={a}>
+                    {AVAILABILITY_LABELS[a]}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
-        </fieldset>
 
-        <label htmlFor="maxDistanceKm">Maximum distance (km)</label>
-        <input
-          id="maxDistanceKm"
-          type="number"
-          min="0"
-          step="any"
-          value={maxDistanceKm}
-          onChange={(e) => setMaxDistanceKm(e.target.value)}
-          placeholder="e.g. 10"
-          style={inputStyle}
-        />
+          <fieldset className="grid gap-3">
+            <legend className="mb-1 text-sm font-medium text-ink">
+              Minimum quantity
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="minQuantity">At least</Label>
+                <Input
+                  id="minQuantity"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={minQuantity}
+                  onChange={(e) => setMinQuantity(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="quantityUnit">Unit</Label>
+                <Select
+                  id="quantityUnit"
+                  value={quantityUnit}
+                  onChange={(e) => setQuantityUnit(e.target.value)}
+                >
+                  {QUANTITY_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {QUANTITY_UNIT_LABELS[u]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          </fieldset>
 
-        <button type="submit" disabled={busy} style={primaryButtonStyle}>
-          {busy ? "Searching…" : "Show nearby listings"}
-        </button>
-      </form>
+          <div>
+            <Label htmlFor="maxDistanceKm">Maximum distance (km)</Label>
+            <Input
+              id="maxDistanceKm"
+              type="number"
+              min="0"
+              step="any"
+              value={maxDistanceKm}
+              onChange={(e) => setMaxDistanceKm(e.target.value)}
+              placeholder="e.g. 10"
+              className="max-w-xs"
+            />
+            <FieldHint>Leave blank to search the full result window.</FieldHint>
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <Button type="submit" disabled={busy} size="lg">
+              <Search className="h-4 w-4" />
+              {busy ? "Searching…" : "Show nearby listings"}
+            </Button>
+          </div>
+        </form>
+      </Card>
 
       {results !== null && (
-        <section aria-label="Search results" style={{ marginTop: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.1rem" }}>
-            {results.length === 0
-              ? "No nearby listings match those filters."
-              : `${results.length} nearby listing${results.length === 1 ? "" : "s"}`}
-          </h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {results.map((r) => (
-              <li key={r.id} style={cardStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "1rem",
-                    alignItems: "baseline",
-                  }}
+        <section
+          aria-label="Search results"
+          role="region"
+          className="animate-fade-in space-y-3"
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-2xl tracking-tight">
+              {results.length === 0
+                ? "No nearby listings match those filters."
+                : `${results.length} nearby listing${results.length === 1 ? "" : "s"}`}
+            </h2>
+            {results.length > 0 ? (
+              <p className="font-mono text-xs text-ash">
+                {results.length.toString().padStart(2, "0")} within window
+              </p>
+            ) : null}
+          </div>
+
+          {results.length === 0 ? (
+            <Card className="border-dashed p-6 text-sm text-ash">
+              Loosen a filter — widen the distance or clear a specific material
+              — and search again.
+            </Card>
+          ) : (
+            <ul className="grid gap-3">
+              {results.map((r, idx) => (
+                <motion.li
+                  key={r.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, delay: Math.min(idx, 6) * 0.03 }}
                 >
-                  <h3 style={{ margin: 0, fontSize: "1rem" }}>
-                    {r.title}
-                    {r.promoted && (
-                      <span
-                        style={
-                          r.promoted.tier === "PREMIUM"
-                            ? featuredBadgeStyle
-                            : promotedBadgeStyle
-                        }
-                      >
-                        {r.promoted.tier === "PREMIUM"
-                          ? "Featured"
-                          : "Promoted"}
+                  <Card className="p-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-3">
+                      <h3 className="flex flex-wrap items-center gap-2 font-serif text-xl tracking-tight text-ink">
+                        {r.title}
+                        {r.promoted && (
+                          <span>
+                            <Badge
+                              tone={r.promoted.tier === "PREMIUM" ? "rust" : "moss"}
+                            >
+                              {r.promoted.tier === "PREMIUM" ? "Featured" : "Promoted"}
+                            </Badge>
+                          </span>
+                        )}
+                      </h3>
+                      <span className="inline-flex items-center gap-1 font-mono text-sm text-moss">
+                        <Compass className="h-3.5 w-3.5" />
+                        {r.distanceKm.toFixed(1)} km
                       </span>
-                    )}
-                  </h3>
-                  <span style={distanceStyle}>{r.distanceKm.toFixed(1)} km</span>
-                </div>
-                <p style={metaStyle}>
-                  {MATERIAL_LABELS[r.materialCategory]} · {r.quantityMin}–
-                  {r.quantityMax} {QUANTITY_UNIT_LABELS[r.quantityUnit]} ·{" "}
-                  {r.locality} · {AVAILABILITY_LABELS[r.availability]}
-                </p>
-                <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-                  {(() => {
-                    const state = interests[r.id] ?? "idle";
-                    if (state === "done") {
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => toggleInterest(r.id)}
-                          style={secondaryButtonStyle}
-                        >
-                          Withdraw interest
-                        </button>
-                      );
-                    }
-                    return (
-                      <button
+                    </div>
+                    <p className="mt-2 text-sm text-ash">
+                      <span className="text-ink">
+                        {MATERIAL_LABELS[r.materialCategory]}
+                      </span>{" "}
+                      · {r.quantityMin}–{r.quantityMax}{" "}
+                      {QUANTITY_UNIT_LABELS[r.quantityUnit]} · {r.locality} ·{" "}
+                      {AVAILABILITY_LABELS[r.availability]}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(() => {
+                        const state = interests[r.id] ?? "idle";
+                        if (state === "done") {
+                          return (
+                            <Button
+                              type="button"
+                              onClick={() => toggleInterest(r.id)}
+                              variant="secondary"
+                              size="sm"
+                            >
+                              <Heart className="h-3.5 w-3.5 fill-rust text-rust" />
+                              Withdraw interest
+                            </Button>
+                          );
+                        }
+                        return (
+                          <Button
+                            type="button"
+                            onClick={() => toggleInterest(r.id)}
+                            disabled={state === "sending"}
+                            variant="primary"
+                            size="sm"
+                          >
+                            <Heart className="h-3.5 w-3.5" />
+                            {state === "sending"
+                              ? "Sending…"
+                              : state === "error"
+                                ? "Try again"
+                                : "I'm interested"}
+                          </Button>
+                        );
+                      })()}
+                      <Button
                         type="button"
-                        onClick={() => toggleInterest(r.id)}
-                        disabled={state === "sending"}
-                        style={primaryButtonStyle}
+                        onClick={() => reportListing(r.id)}
+                        variant="ghost"
+                        size="sm"
+                        disabled={reportedIds.has(r.id)}
                       >
-                        {state === "sending"
-                          ? "Sending…"
-                          : state === "error"
-                          ? "Try again"
-                          : "I'm interested"}
-                      </button>
-                    );
-                  })()}
-                  <button
-                    type="button"
-                    onClick={() => reportListing(r.id)}
-                    style={secondaryButtonStyle}
-                  >
-                    {reportedIds.has(r.id) ? "Reported" : "Report listing"}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                        <Flag className="h-3.5 w-3.5" />
+                        {reportedIds.has(r.id) ? "Reported" : "Report listing"}
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.6rem 1.2rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  fontSize: "0.85rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-  margin: "0 0 0.6rem",
-};
-
-const fieldsetStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem 1rem 0",
-  margin: "0 0 1rem",
-};
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.9rem",
-  margin: "0.4rem 0 0",
-};
-
-const distanceStyle: React.CSSProperties = {
-  color: "#81c784",
-  fontSize: "0.85rem",
-  fontWeight: 600,
-};
-
-const promotedBadgeStyle: React.CSSProperties = {
-  marginLeft: "0.5rem",
-  padding: "0.1rem 0.45rem",
-  borderRadius: 999,
-  background: "#3949ab",
-  color: "#fff",
-  fontSize: "0.7rem",
-  fontWeight: 600,
-  verticalAlign: "middle",
-};
-
-const featuredBadgeStyle: React.CSSProperties = {
-  ...promotedBadgeStyle,
-  background: "#ef6c00",
-};

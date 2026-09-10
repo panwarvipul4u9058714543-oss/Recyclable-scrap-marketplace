@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   listingId: string;
@@ -9,10 +10,6 @@ interface Props {
   label: string;
 }
 
-/**
- * Seller-side "Select" button. POSTs to the select endpoint, then refreshes
- * the RSC tree so the newly-created connection appears without a full reload.
- */
 export function SelectBuyerButton({ listingId, collectorId, label }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -40,25 +37,18 @@ export function SelectBuyerButton({ listingId, collectorId, label }: Props) {
   }
 
   return (
-    <div>
-      <button
+    <div className="flex flex-col items-end gap-1">
+      <Button
         type="button"
         onClick={onClick}
         disabled={busy}
-        style={{
-          padding: "0.35rem 0.8rem",
-          fontSize: "0.85rem",
-          borderRadius: 6,
-          border: "none",
-          background: "#2e7d32",
-          color: "#fff",
-          cursor: "pointer",
-        }}
+        variant="primary"
+        size="sm"
       >
         {busy ? "Selecting…" : label}
-      </button>
+      </Button>
       {error && (
-        <p role="alert" style={{ color: "#ff8a80", marginTop: "0.4rem" }}>
+        <p role="alert" className="text-xs text-signal-err">
           {error}
         </p>
       )}

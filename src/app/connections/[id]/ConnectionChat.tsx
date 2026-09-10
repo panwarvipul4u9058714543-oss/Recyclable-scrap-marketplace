@@ -2,6 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  CheckCircle2,
+  Clock,
+  Eye,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Send,
+  ShieldOff,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Textarea } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -32,12 +50,6 @@ interface Props {
   currentUserId: string;
 }
 
-/**
- * Interactive shell for a connection detail: chat thread with post form, a
- * reveal-my-contact button, and a cancel-reservation button. Server-rendered
- * bootstrapping is refreshed via router.refresh() after each mutating call
- * so the initial snapshot stays authoritative.
- */
 export function ConnectionChat({
   connection,
   initialMessages,
@@ -107,8 +119,6 @@ export function ConnectionChat({
     }
   }
 
-  // Parse a form field into an optional positive number payload, or return
-  // an error message describing why it can't be sent.
   function parseOptionalPositive(
     raw: string,
     label: string,
@@ -198,350 +208,346 @@ export function ConnectionChat({
   const otherRole = connection.viewerIsSeller ? "buyer" : "seller";
 
   return (
-    <div>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
+    <div className="space-y-5">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
 
-      <section aria-label="Contact" style={contactBoxStyle}>
-        {connection.contactRevealed ? (
-          <>
-            <p style={{ margin: 0 }}>
-              <strong>{otherRole === "buyer" ? "Buyer" : "Seller"}:</strong>{" "}
-              <a href={`tel:${otherPhone}`}>{otherPhone}</a>
-            </p>
-            {connection.viewerIsSeller ? null : connection.pickup ? (
-              <p style={{ margin: "0.4rem 0 0", color: "#9e9e9e" }}>
-                Pickup coordinates: {connection.pickup.latitude.toFixed(6)},{" "}
-                {connection.pickup.longitude.toFixed(6)}
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p style={{ margin: 0 }}>
-              Exact contact details are hidden until both of you reveal.
-            </p>
-            <ul style={{ margin: "0.4rem 0", paddingLeft: "1.2rem" }}>
-              <li>
-                You:{" "}
-                {connection.youRevealed ? (
-                  <strong>revealed</strong>
-                ) : (
-                  <em>not yet</em>
-                )}
-              </li>
-              <li>
-                Other {otherRole}:{" "}
-                {connection.counterpartyRevealed ? (
-                  <strong>revealed</strong>
-                ) : (
-                  <em>not yet</em>
-                )}
-              </li>
-            </ul>
-            {!connection.youRevealed && !isTerminal && (
-              <button
-                type="button"
-                onClick={reveal}
-                disabled={busyAction === "reveal"}
-                style={primaryButtonStyle}
-              >
-                {busyAction === "reveal" ? "Revealing…" : "Reveal my contact"}
-              </button>
+      <section aria-label="Contact" role="region">
+        <Card className="p-5">
+          <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-ash">
+            {connection.contactRevealed ? (
+              <>
+                <Phone className="h-3.5 w-3.5" /> Contact revealed
+              </>
+            ) : (
+              <>
+                <ShieldOff className="h-3.5 w-3.5" /> Contact hidden
+              </>
             )}
-          </>
-        )}
+          </div>
+          {connection.contactRevealed ? (
+            <>
+              <p className="text-[15px] text-ink">
+                <strong className="font-medium">
+                  {otherRole === "buyer" ? "Buyer" : "Seller"}:
+                </strong>{" "}
+                <a
+                  href={`tel:${otherPhone}`}
+                  className="font-mono text-rust underline-offset-4 hover:underline"
+                >
+                  {otherPhone}
+                </a>
+              </p>
+              {!connection.viewerIsSeller && connection.pickup ? (
+                <p className="mt-2 flex items-center gap-2 text-sm text-ash">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Pickup coordinates:{" "}
+                  <span className="font-mono text-ink">
+                    {connection.pickup.latitude.toFixed(6)},{" "}
+                    {connection.pickup.longitude.toFixed(6)}
+                  </span>
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-ink">
+                Exact contact details are hidden until both of you reveal.
+              </p>
+              <ul className="mt-3 space-y-1 text-sm">
+                <li className="flex items-center gap-2">
+                  <span className="text-ash">You:</span>
+                  {connection.youRevealed ? (
+                    <strong className="font-medium text-moss">revealed</strong>
+                  ) : (
+                    <em className="text-ash">not yet</em>
+                  )}
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-ash">Other {otherRole}:</span>
+                  {connection.counterpartyRevealed ? (
+                    <strong className="font-medium text-moss">revealed</strong>
+                  ) : (
+                    <em className="text-ash">not yet</em>
+                  )}
+                </li>
+              </ul>
+              {!connection.youRevealed && !isTerminal && (
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    onClick={reveal}
+                    disabled={busyAction === "reveal"}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    {busyAction === "reveal"
+                      ? "Revealing…"
+                      : "Reveal my contact"}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </Card>
       </section>
 
-      <section aria-label="Reservation" style={reservationBoxStyle}>
-        <p style={{ margin: 0 }}>
-          <strong>Status:</strong> {connection.status}
-        </p>
-        {!isTerminal && (
-          <>
-            <p style={{ margin: "0.4rem 0 0", color: "#9e9e9e" }}>
-              Reservation expires{" "}
-              {new Date(connection.expiresAt).toLocaleString()}.
+      <section aria-label="Reservation" role="region">
+        <Card className="p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm">
+              <strong className="font-medium text-ink">Status:</strong>{" "}
+              <span className="font-mono text-ink">{connection.status}</span>
             </p>
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                flexWrap: "wrap",
-                marginTop: "0.6rem",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() =>
-                  setOutcomeMode(outcomeMode === "complete" ? "none" : "complete")
-                }
-                style={primaryButtonStyle}
-              >
-                Mark as completed
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setOutcomeMode(outcomeMode === "fail" ? "none" : "fail")
-                }
-                style={secondaryButtonStyle}
-              >
-                Mark as failed
-              </button>
-              <button
-                type="button"
-                onClick={cancel}
-                disabled={busyAction === "cancel"}
-                style={secondaryButtonStyle}
-              >
-                {busyAction === "cancel" ? "Cancelling…" : "Cancel reservation"}
-              </button>
-            </div>
-
-            {outcomeMode === "complete" && (
-              <form
-                onSubmit={(e) => submitOutcome("complete", e)}
-                style={outcomeFormStyle}
-                aria-label="Complete pickup"
-              >
-                <h3 style={outcomeHeadingStyle}>Pickup complete</h3>
-                <label htmlFor="actualQuantity">
-                  Actual quantity (optional)
-                </label>
-                <input
-                  id="actualQuantity"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={actualQuantity}
-                  onChange={(e) => setActualQuantity(e.target.value)}
-                  placeholder="e.g. 7.5"
-                  style={inputStyle}
-                />
-                <label htmlFor="finalPrice">Final price (optional)</label>
-                <input
-                  id="finalPrice"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={finalPrice}
-                  onChange={(e) => setFinalPrice(e.target.value)}
-                  placeholder="e.g. 375"
-                  style={inputStyle}
-                />
-                <button
-                  type="submit"
-                  disabled={busyAction === "complete"}
-                  style={primaryButtonStyle}
-                >
-                  {busyAction === "complete" ? "Saving…" : "Confirm completed"}
-                </button>
-              </form>
-            )}
-
-            {outcomeMode === "fail" && (
-              <form
-                onSubmit={(e) => submitOutcome("fail", e)}
-                style={outcomeFormStyle}
-                aria-label="Report failure"
-              >
-                <h3 style={outcomeHeadingStyle}>Pickup failed</h3>
-                <label htmlFor="failureReason">
-                  What went wrong? (optional, max 500 chars)
-                </label>
-                <textarea
-                  id="failureReason"
-                  maxLength={500}
-                  value={failureReason}
-                  onChange={(e) => setFailureReason(e.target.value)}
-                  placeholder="e.g. Access blocked at the gate."
-                  style={{ ...inputStyle, minHeight: 80 }}
-                />
-                <label htmlFor="failQuantity">
-                  Actual quantity picked up (optional)
-                </label>
-                <input
-                  id="failQuantity"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={actualQuantity}
-                  onChange={(e) => setActualQuantity(e.target.value)}
-                  placeholder="e.g. 1"
-                  style={inputStyle}
-                />
-                <label htmlFor="failPrice">
-                  Final price agreed (optional)
-                </label>
-                <input
-                  id="failPrice"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={finalPrice}
-                  onChange={(e) => setFinalPrice(e.target.value)}
-                  placeholder="e.g. 50"
-                  style={inputStyle}
-                />
-                <button
-                  type="submit"
-                  disabled={busyAction === "fail"}
-                  style={primaryButtonStyle}
-                >
-                  {busyAction === "fail" ? "Saving…" : "Confirm failed"}
-                </button>
-              </form>
-            )}
-          </>
-        )}
-        {isTerminal && (
-          <div style={{ marginTop: "0.4rem", color: "#9e9e9e" }}>
-            {connection.actualQuantity !== null && (
-              <p style={{ margin: "0.2rem 0" }}>
-                Actual quantity: <strong>{connection.actualQuantity}</strong>
-              </p>
-            )}
-            {connection.finalPrice !== null && (
-              <p style={{ margin: "0.2rem 0" }}>
-                Final price: <strong>{connection.finalPrice}</strong>
-              </p>
-            )}
-            {connection.failureReason && (
-              <p style={{ margin: "0.2rem 0" }}>
-                Reason: {connection.failureReason}
+            {!isTerminal && (
+              <p className="flex items-center gap-1 text-xs text-ash">
+                <Clock className="h-3 w-3" />
+                Reservation expires{" "}
+                {new Date(connection.expiresAt).toLocaleString()}.
               </p>
             )}
           </div>
-        )}
+
+          {!isTerminal && (
+            <>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() =>
+                    setOutcomeMode(
+                      outcomeMode === "complete" ? "none" : "complete",
+                    )
+                  }
+                  variant="moss"
+                  size="sm"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Mark as completed
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    setOutcomeMode(outcomeMode === "fail" ? "none" : "fail")
+                  }
+                  variant="secondary"
+                  size="sm"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Mark as failed
+                </Button>
+                <Button
+                  type="button"
+                  onClick={cancel}
+                  disabled={busyAction === "cancel"}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {busyAction === "cancel"
+                    ? "Cancelling…"
+                    : "Cancel reservation"}
+                </Button>
+              </div>
+
+              {outcomeMode === "complete" && (
+                <form
+                  onSubmit={(e) => submitOutcome("complete", e)}
+                  aria-label="Complete pickup"
+                  className="mt-4 rounded-md border border-moss/30 bg-moss-soft/60 p-4"
+                >
+                  <h3 className="mb-3 flex items-center gap-2 font-serif text-lg tracking-tight text-moss">
+                    <Sparkles className="h-4 w-4" /> Pickup complete
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="actualQuantity">
+                        Actual quantity (optional)
+                      </Label>
+                      <Input
+                        id="actualQuantity"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={actualQuantity}
+                        onChange={(e) => setActualQuantity(e.target.value)}
+                        placeholder="e.g. 7.5"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="finalPrice">Final price (optional)</Label>
+                      <Input
+                        id="finalPrice"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={finalPrice}
+                        onChange={(e) => setFinalPrice(e.target.value)}
+                        placeholder="e.g. 375"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      type="submit"
+                      disabled={busyAction === "complete"}
+                      variant="primary"
+                      size="sm"
+                    >
+                      {busyAction === "complete"
+                        ? "Saving…"
+                        : "Confirm completed"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {outcomeMode === "fail" && (
+                <form
+                  onSubmit={(e) => submitOutcome("fail", e)}
+                  aria-label="Report failure"
+                  className="mt-4 rounded-md border border-signal-warn/30 bg-signal-warn/5 p-4"
+                >
+                  <h3 className="mb-3 flex items-center gap-2 font-serif text-lg tracking-tight text-signal-warn">
+                    <XCircle className="h-4 w-4" /> Pickup failed
+                  </h3>
+                  <div className="grid gap-3">
+                    <div>
+                      <Label htmlFor="failureReason">
+                        What went wrong? (optional, max 500 chars)
+                      </Label>
+                      <Textarea
+                        id="failureReason"
+                        maxLength={500}
+                        value={failureReason}
+                        onChange={(e) => setFailureReason(e.target.value)}
+                        placeholder="e.g. Access blocked at the gate."
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="failQuantity">
+                          Actual quantity picked up (optional)
+                        </Label>
+                        <Input
+                          id="failQuantity"
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={actualQuantity}
+                          onChange={(e) => setActualQuantity(e.target.value)}
+                          placeholder="e.g. 1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="failPrice">
+                          Final price agreed (optional)
+                        </Label>
+                        <Input
+                          id="failPrice"
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={finalPrice}
+                          onChange={(e) => setFinalPrice(e.target.value)}
+                          placeholder="e.g. 50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      type="submit"
+                      disabled={busyAction === "fail"}
+                      variant="primary"
+                      size="sm"
+                    >
+                      {busyAction === "fail" ? "Saving…" : "Confirm failed"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+
+          {isTerminal && (
+            <div className="mt-3 space-y-1 text-sm text-ash">
+              {connection.actualQuantity !== null && (
+                <p>
+                  Actual quantity:{" "}
+                  <strong className="font-mono text-ink">
+                    {connection.actualQuantity}
+                  </strong>
+                </p>
+              )}
+              {connection.finalPrice !== null && (
+                <p>
+                  Final price:{" "}
+                  <strong className="font-mono text-ink">
+                    {connection.finalPrice}
+                  </strong>
+                </p>
+              )}
+              {connection.failureReason && <p>Reason: {connection.failureReason}</p>}
+            </div>
+          )}
+        </Card>
       </section>
 
-      <section aria-label="Chat" style={{ marginTop: "1rem" }}>
-        <h2 style={{ fontSize: "1.05rem", margin: "0 0 0.4rem" }}>Chat</h2>
-        <ul ref={listRef} style={chatListStyle}>
-          {messages.length === 0 ? (
-            <li style={{ color: "#9e9e9e" }}>No messages yet.</li>
+      <section aria-label="Chat" role="region">
+        <Card className="p-5">
+          <h2 className="mb-3 flex items-center gap-2 font-serif text-xl tracking-tight">
+            <MessageCircle className="h-4 w-4 text-ash" /> Chat
+          </h2>
+          <ul
+            ref={listRef}
+            className="mb-3 flex max-h-80 flex-col gap-2 overflow-y-auto rounded-md border border-dune/60 bg-sand/40 p-3"
+          >
+            {messages.length === 0 ? (
+              <li className="text-sm text-ash">No messages yet.</li>
+            ) : (
+              messages.map((m) => {
+                const mine = m.senderId === currentUserId;
+                return (
+                  <li
+                    key={m.id}
+                    className={cn(
+                      "max-w-[80%] rounded-lg px-3 py-2 text-[15px] leading-snug",
+                      mine
+                        ? "self-end bg-rust text-paper"
+                        : "self-start border border-dune bg-paper text-ink",
+                    )}
+                  >
+                    {m.body}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+          {isTerminal ? (
+            <p className="text-sm text-ash">
+              This connection is {connection.status.toLowerCase()}; no new
+              messages can be sent.
+            </p>
           ) : (
-            messages.map((m) => (
-              <li
-                key={m.id}
-                style={{
-                  ...bubbleStyle,
-                  alignSelf:
-                    m.senderId === currentUserId ? "flex-end" : "flex-start",
-                  background:
-                    m.senderId === currentUserId ? "#2e7d32" : "#333",
-                }}
+            <form onSubmit={sendMessage} className="flex gap-2">
+              <Input
+                aria-label="Message"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Type a message"
+                className="flex-1"
+              />
+              <Button
+                type="submit"
+                disabled={posting || draft.trim() === ""}
+                variant="primary"
               >
-                {m.body}
-              </li>
-            ))
+                <Send className="h-4 w-4" />
+                {posting ? "Sending…" : "Send"}
+              </Button>
+            </form>
           )}
-        </ul>
-        {isTerminal ? (
-          <p style={{ color: "#9e9e9e" }}>
-            This connection is {connection.status.toLowerCase()}; no new
-            messages can be sent.
-          </p>
-        ) : (
-          <form onSubmit={sendMessage} style={{ display: "flex", gap: "0.5rem" }}>
-            <input
-              aria-label="Message"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Type a message"
-              style={{ ...inputStyle, flex: 1 }}
-            />
-            <button
-              type="submit"
-              disabled={posting || draft.trim() === ""}
-              style={primaryButtonStyle}
-            >
-              {posting ? "Sending…" : "Send"}
-            </button>
-          </form>
-        )}
+        </Card>
       </section>
     </div>
   );
 }
-
-const contactBoxStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.8rem 1rem",
-  margin: "1rem 0",
-};
-
-const reservationBoxStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.8rem 1rem",
-  margin: "1rem 0",
-};
-
-const chatListStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  listStyle: "none",
-  gap: "0.4rem",
-  maxHeight: 300,
-  overflowY: "auto",
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem",
-  margin: "0 0 0.6rem",
-};
-
-const bubbleStyle: React.CSSProperties = {
-  color: "#fff",
-  padding: "0.4rem 0.7rem",
-  borderRadius: 12,
-  maxWidth: "80%",
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: "0.55rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.95rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};
-
-const outcomeFormStyle: React.CSSProperties = {
-  marginTop: "0.8rem",
-  padding: "0.6rem 0.8rem",
-  border: "1px solid #333",
-  borderRadius: 8,
-  background: "rgba(255,255,255,0.02)",
-};
-
-const outcomeHeadingStyle: React.CSSProperties = {
-  fontSize: "0.95rem",
-  margin: "0 0 0.4rem",
-};

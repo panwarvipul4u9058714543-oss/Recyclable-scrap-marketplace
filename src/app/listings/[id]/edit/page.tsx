@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   ListingError,
@@ -26,8 +29,6 @@ export default async function EditListingPage({
     throw err;
   }
 
-  // Offer the seller types the user holds, always including the one already on
-  // the listing so the current value stays selectable.
   const heldTypes = SELLER_TYPES.filter((type) => user.roles.includes(type));
   const sellerTypes = Array.from(
     new Set<SellerType>([listing.sellerType, ...heldTypes]),
@@ -35,14 +36,17 @@ export default async function EditListingPage({
 
   if (listing.status === "CLOSED") {
     return (
-      <main>
-        <p>
-          <Link href="/listings">← Back to your listings</Link>
-        </p>
-        <h1>Edit listing</h1>
-        <p style={{ color: "#9e9e9e" }}>
+      <main className="container-page py-10 sm:py-14">
+        <Link
+          href="/listings"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to your listings
+        </Link>
+        <PageHeader eyebrow="Listings" title="Edit listing" />
+        <Card className="p-6 text-sm text-ash">
           This listing is closed and can no longer be edited.
-        </p>
+        </Card>
       </main>
     );
   }
@@ -63,11 +67,14 @@ export default async function EditListingPage({
   };
 
   return (
-    <main>
-      <p>
-        <Link href="/listings">← Back to your listings</Link>
-      </p>
-      <h1>Edit listing</h1>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/listings"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to your listings
+      </Link>
+      <PageHeader eyebrow="Listings" title="Edit listing" />
       <ListingForm
         mode="edit"
         listingId={listing.id}

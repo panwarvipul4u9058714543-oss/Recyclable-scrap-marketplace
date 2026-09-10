@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   if (canSell)
     actions.push({
       href: "/listings",
-      label: "Manage listings",
+      label: "Manage your listings",
       hint: "Post scrap, edit weights, mark collected.",
       Icon: ScrollText,
       tone: "rust",
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
   if (canBrowse)
     actions.push({
       href: "/nearby",
-      label: "Browse nearby",
+      label: "Browse nearby listings",
       hint: "See what's within a few kilometres today.",
       Icon: Compass,
     });

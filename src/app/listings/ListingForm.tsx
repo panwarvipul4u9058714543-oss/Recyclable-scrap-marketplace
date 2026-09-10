@@ -2,6 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { AlertTriangle, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Select, Textarea } from "@/components/ui/input";
+import { FieldHint, Label } from "@/components/ui/label";
 import {
   AVAILABILITY_LABELS,
   AVAILABILITY_OPTIONS,
@@ -27,7 +33,7 @@ export interface ListingFormValues {
   materialCategory: string;
   title: string;
   description: string;
-  photos: string; // one URL per line
+  photos: string;
   quantityMin: string;
   quantityMax: string;
   quantityUnit: string;
@@ -199,259 +205,258 @@ export function ListingForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
+    <form onSubmit={onSubmit} className="space-y-6">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
 
-      <div style={noticeStyle}>
-        <strong>{PROHIBITED_NOTICE}</strong>
-        <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem" }}>
+      {/* Retain PROHIBITED_NOTICE verbatim so the e2e "List ordinary
+       * recyclable scrap only" assertion resolves. */}
+      <Card className="border-signal-warn/40 bg-signal-warn/5 p-5">
+        <p className="flex items-start gap-2 text-sm text-ink">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-signal-warn" />
+          <strong className="font-medium">{PROHIBITED_NOTICE}</strong>
+        </p>
+        <ul className="mt-3 grid gap-1 pl-6 text-xs text-ash sm:grid-cols-2">
           {PROHIBITED_MATERIALS.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item} className="list-disc">
+              {item}
+            </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
-      <label htmlFor="sellerType">Listing as</label>
-      <select
-        id="sellerType"
-        value={values.sellerType}
-        onChange={(e) => set("sellerType", e.target.value)}
-        style={inputStyle}
-      >
-        {sellerTypes.map((type) => (
-          <option key={type} value={type}>
-            {SELLER_TYPE_LABELS[type]}
-          </option>
-        ))}
-      </select>
-
-      <label htmlFor="materialCategory">Material category</label>
-      <select
-        id="materialCategory"
-        value={values.materialCategory}
-        onChange={(e) => set("materialCategory", e.target.value)}
-        style={inputStyle}
-      >
-        {MATERIAL_CATEGORIES.map((category) => (
-          <option key={category} value={category}>
-            {MATERIAL_LABELS[category]}
-          </option>
-        ))}
-      </select>
-      {categoryWarning && (
-        <p role="note" style={warningStyle}>
-          ⚠ {categoryWarning}
-        </p>
-      )}
-      {restrictedNotice && (
-        <p role="note" style={restrictedStyle}>
-          🔒 <strong>Extra verification may be required.</strong>{" "}
-          {restrictedNotice}
-        </p>
-      )}
-
-      <label htmlFor="title">Title</label>
-      <input
-        id="title"
-        value={values.title}
-        onChange={(e) => set("title", e.target.value)}
-        placeholder="e.g. Clean PET bottles, ~6 kg"
-        style={inputStyle}
-      />
-
-      <label htmlFor="description">Description (optional)</label>
-      <textarea
-        id="description"
-        value={values.description}
-        onChange={(e) => set("description", e.target.value)}
-        rows={3}
-        style={inputStyle}
-      />
-
-      <label htmlFor="photos">Photo URLs (one per line)</label>
-      <textarea
-        id="photos"
-        value={values.photos}
-        onChange={(e) => set("photos", e.target.value)}
-        rows={3}
-        placeholder="https://…/photo1.jpg"
-        style={inputStyle}
-      />
-
-      <fieldset style={fieldsetStyle}>
-        <legend>Estimated quantity</legend>
-        <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="quantityMin">From</label>
-            <input
-              id="quantityMin"
-              type="number"
-              min="0"
-              step="any"
-              value={values.quantityMin}
-              onChange={(e) => set("quantityMin", e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="quantityMax">To</label>
-            <input
-              id="quantityMax"
-              type="number"
-              min="0"
-              step="any"
-              value={values.quantityMax}
-              onChange={(e) => set("quantityMax", e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="quantityUnit">Unit</label>
-            <select
-              id="quantityUnit"
-              value={values.quantityUnit}
-              onChange={(e) => set("quantityUnit", e.target.value)}
-              style={inputStyle}
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4">
+          <h2 className="font-serif text-xl tracking-tight">The basics</h2>
+          <p className="mt-1 text-sm text-ash">
+            What you&apos;re listing, and who&apos;s posting it.
+          </p>
+        </div>
+        <div className="grid gap-4">
+          <div>
+            <Label htmlFor="sellerType">Listing as</Label>
+            <Select
+              id="sellerType"
+              value={values.sellerType}
+              onChange={(e) => set("sellerType", e.target.value)}
+              className="max-w-xs"
             >
-              {QUANTITY_UNITS.map((unit) => (
-                <option key={unit} value={unit}>
-                  {QUANTITY_UNIT_LABELS[unit]}
+              {sellerTypes.map((type) => (
+                <option key={type} value={type}>
+                  {SELLER_TYPE_LABELS[type]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
-        </div>
-      </fieldset>
 
-      <label htmlFor="locality">Approximate locality</label>
-      <input
-        id="locality"
-        value={values.locality}
-        onChange={(e) => set("locality", e.target.value)}
-        placeholder="e.g. Koramangala, Bengaluru"
-        style={inputStyle}
-      />
+          <div>
+            <Label htmlFor="materialCategory">Material category</Label>
+            <Select
+              id="materialCategory"
+              value={values.materialCategory}
+              onChange={(e) => set("materialCategory", e.target.value)}
+              className="max-w-xs"
+            >
+              {MATERIAL_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {MATERIAL_LABELS[category]}
+                </option>
+              ))}
+            </Select>
+            {categoryWarning && (
+              <p
+                role="note"
+                className="mt-2 flex items-start gap-2 rounded-md border border-signal-warn/30 bg-signal-warn/10 px-3 py-2 text-xs text-signal-warn"
+              >
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {categoryWarning}
+              </p>
+            )}
+            {restrictedNotice && (
+              <p
+                role="note"
+                className="mt-2 flex items-start gap-2 rounded-md border border-signal-warn/30 bg-signal-warn/10 px-3 py-2 text-xs text-signal-warn"
+              >
+                <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  <strong className="font-medium">Extra verification may be required.</strong>{" "}
+                  {restrictedNotice}
+                </span>
+              </p>
+            )}
+          </div>
 
-      <fieldset style={fieldsetStyle}>
-        <legend>Pickup coordinates</legend>
-        <p style={hintStyle}>
-          Used to place your listing on nearby collectors&apos; screens.
-        </p>
-        <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="latitude">Latitude</label>
-            <input
-              id="latitude"
-              type="number"
-              step="any"
-              value={values.latitude}
-              onChange={(e) => set("latitude", e.target.value)}
-              placeholder="12.9352"
-              style={inputStyle}
+          <div>
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              value={values.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="e.g. Clean PET bottles, ~6 kg"
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="longitude">Longitude</label>
-            <input
-              id="longitude"
-              type="number"
-              step="any"
-              value={values.longitude}
-              onChange={(e) => set("longitude", e.target.value)}
-              placeholder="77.6245"
-              style={inputStyle}
+
+          <div>
+            <Label htmlFor="description">Description (optional)</Label>
+            <Textarea
+              id="description"
+              value={values.description}
+              onChange={(e) => set("description", e.target.value)}
+              rows={3}
             />
           </div>
+
+          <div>
+            <Label htmlFor="photos">Photo URLs (one per line)</Label>
+            <Textarea
+              id="photos"
+              value={values.photos}
+              onChange={(e) => set("photos", e.target.value)}
+              rows={3}
+              placeholder="https://…/photo1.jpg"
+              className="font-mono text-xs"
+            />
+            <FieldHint>At least one URL required.</FieldHint>
+          </div>
         </div>
-      </fieldset>
+      </Card>
 
-      <label htmlFor="availability">Availability</label>
-      <select
-        id="availability"
-        value={values.availability}
-        onChange={(e) => set("availability", e.target.value)}
-        style={inputStyle}
-      >
-        {AVAILABILITY_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {AVAILABILITY_LABELS[option]}
-          </option>
-        ))}
-      </select>
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4">
+          <h2 className="font-serif text-xl tracking-tight">
+            Quantity &amp; availability
+          </h2>
+          <p className="mt-1 text-sm text-ash">
+            Give a range — buyers plan the run around it.
+          </p>
+        </div>
+        <div className="grid gap-4">
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-ink">
+              Estimated quantity
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="quantityMin">From</Label>
+                <Input
+                  id="quantityMin"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={values.quantityMin}
+                  onChange={(e) => set("quantityMin", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="quantityMax">To</Label>
+                <Input
+                  id="quantityMax"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={values.quantityMax}
+                  onChange={(e) => set("quantityMax", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="quantityUnit">Unit</Label>
+                <Select
+                  id="quantityUnit"
+                  value={values.quantityUnit}
+                  onChange={(e) => set("quantityUnit", e.target.value)}
+                >
+                  {QUANTITY_UNITS.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {QUANTITY_UNIT_LABELS[unit]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          </fieldset>
 
-      <button type="submit" disabled={busy} style={buttonStyle}>
-        {busy
-          ? "Saving…"
-          : mode === "create"
-            ? "Publish listing"
-            : "Save changes"}
-      </button>
+          <div>
+            <Label htmlFor="availability">Availability</Label>
+            <Select
+              id="availability"
+              value={values.availability}
+              onChange={(e) => set("availability", e.target.value)}
+              className="max-w-xs"
+            >
+              {AVAILABILITY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {AVAILABILITY_LABELS[option]}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4">
+          <h2 className="font-serif text-xl tracking-tight">Pickup location</h2>
+          <p className="mt-1 text-sm text-ash">
+            The nearby buyer sees a locality string; distance is computed from
+            the exact coordinates below.
+          </p>
+        </div>
+        <div className="grid gap-4">
+          <div>
+            <Label htmlFor="locality">Approximate locality</Label>
+            <Input
+              id="locality"
+              value={values.locality}
+              onChange={(e) => set("locality", e.target.value)}
+              placeholder="e.g. Koramangala, Bengaluru"
+            />
+          </div>
+
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-ink">
+              Pickup coordinates
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="latitude">Latitude</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  value={values.latitude}
+                  onChange={(e) => set("latitude", e.target.value)}
+                  placeholder="12.9352"
+                />
+              </div>
+              <div>
+                <Label htmlFor="longitude">Longitude</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  value={values.longitude}
+                  onChange={(e) => set("longitude", e.target.value)}
+                  placeholder="77.6245"
+                />
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </Card>
+
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={busy} variant="primary" size="lg">
+          {busy
+            ? "Saving…"
+            : mode === "create"
+              ? "Publish listing"
+              : "Save changes"}
+        </Button>
+        <span className="text-xs text-ash">
+          {mode === "create"
+            ? "You can pause or close it anytime."
+            : "Changes take effect immediately."}
+        </span>
+      </div>
     </form>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: "0.6rem 1.2rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const noticeStyle: React.CSSProperties = {
-  border: "1px solid #b26a00",
-  background: "#2a1e0a",
-  color: "#ffcc80",
-  borderRadius: 8,
-  padding: "0.8rem 1rem",
-  margin: "0 0 1.2rem",
-  fontSize: "0.9rem",
-};
-
-const warningStyle: React.CSSProperties = {
-  color: "#ffcc80",
-  margin: "-0.6rem 0 1rem",
-  fontSize: "0.9rem",
-};
-
-const restrictedStyle: React.CSSProperties = {
-  border: "1px solid #b26a00",
-  background: "#2a1e0a",
-  color: "#ffcc80",
-  borderRadius: 8,
-  padding: "0.6rem 0.8rem",
-  margin: "-0.4rem 0 1rem",
-  fontSize: "0.9rem",
-};
-
-const fieldsetStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem 1rem 0",
-  margin: "0 0 1rem",
-};
-
-const hintStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0 0 0.6rem",
-};

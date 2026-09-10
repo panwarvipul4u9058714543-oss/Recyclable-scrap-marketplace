@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   ConnectionError,
@@ -39,18 +41,29 @@ export default async function ConnectionDetailPage({ params }: Params) {
     : null;
 
   return (
-    <main>
-      <p>
-        <Link href="/connections">← Back to your connections</Link>
-      </p>
-      <h1 style={{ marginBottom: "0.2rem" }}>{detail.listingTitle}</h1>
-      <p style={{ color: "#9e9e9e", marginTop: 0 }}>
-        Locality: {detail.locality}{" "}
-        {viewerIsSeller
-          ? "· You are the seller."
-          : "· You are the selected buyer."}{" "}
-        · <Link href={`/u/${counterpartyId}`}>View their profile</Link>
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/connections"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to your connections
+      </Link>
+      <PageHeader
+        eyebrow={viewerIsSeller ? "Reservation · seller" : "Reservation · buyer"}
+        title={detail.listingTitle}
+        description={
+          <>
+            {detail.locality}
+            {" · "}
+            <Link
+              href={`/u/${counterpartyId}`}
+              className="text-rust underline-offset-4 hover:underline"
+            >
+              View their profile
+            </Link>
+          </>
+        }
+      />
 
       <ConnectionChat
         connection={{

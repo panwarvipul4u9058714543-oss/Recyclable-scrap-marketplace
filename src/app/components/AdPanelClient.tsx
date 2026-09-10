@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ArrowUpRight, Megaphone } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface AdPanelClientPlacement {
   id: string;
@@ -10,11 +12,6 @@ interface AdPanelClientPlacement {
   sponsorName: string | null;
 }
 
-/**
- * Renders the sponsored panel and posts one impression per placement id on
- * mount. Deduplicates within a mount so re-renders don't double-count.
- * Failures are silent — an ad panel must never block the user's page.
- */
 export function AdPanelClient({
   placements,
 }: {
@@ -41,58 +38,40 @@ export function AdPanelClient({
   }
 
   return (
-    <aside aria-label="Sponsored" style={panelStyle}>
-      <p style={headerStyle}>Sponsored</p>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {placements.map((p) => (
-          <li key={p.id} style={itemStyle}>
-            <p style={{ margin: 0, fontWeight: 600 }}>{p.headline}</p>
-            {p.sponsorName && <p style={metaStyle}>{p.sponsorName}</p>}
-            <p style={{ margin: "0.3rem 0 0.5rem" }}>{p.body}</p>
-            <a
-              href={p.linkUrl}
-              target="_blank"
-              rel="nofollow noopener sponsored"
-              onClick={() => handleClick(p.id)}
-              style={ctaStyle}
+    <aside aria-label="Sponsored" className="animate-fade-in">
+      <Card className="border-dashed bg-sand/40 p-4">
+        <p className="mb-3 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-ash">
+          <Megaphone className="h-3 w-3" /> Sponsored
+        </p>
+        <ul className="space-y-3">
+          {placements.map((p, idx) => (
+            <li
+              key={p.id}
+              className={
+                "space-y-1.5 " +
+                (idx > 0 ? "border-t border-dune/60 pt-3" : "")
+              }
             >
-              Learn more →
-            </a>
-          </li>
-        ))}
-      </ul>
+              <p className="font-serif text-base leading-tight text-ink">
+                {p.headline}
+              </p>
+              {p.sponsorName ? (
+                <p className="text-xs text-ash">{p.sponsorName}</p>
+              ) : null}
+              <p className="text-sm leading-snug text-ink/85">{p.body}</p>
+              <a
+                href={p.linkUrl}
+                target="_blank"
+                rel="nofollow noopener sponsored"
+                onClick={() => handleClick(p.id)}
+                className="focus-ring inline-flex items-center gap-1 rounded-sm text-sm text-rust hover:underline"
+              >
+                Learn more <ArrowUpRight className="h-3 w-3" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </aside>
   );
 }
-
-const panelStyle: React.CSSProperties = {
-  marginTop: "1.5rem",
-  padding: "0.9rem 1rem",
-  border: "1px dashed #444",
-  borderRadius: 8,
-  background: "#12141a",
-};
-
-const headerStyle: React.CSSProperties = {
-  margin: 0,
-  color: "#9e9e9e",
-  fontSize: "0.75rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-};
-
-const itemStyle: React.CSSProperties = {
-  padding: "0.6rem 0",
-  borderBottom: "1px solid #222",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0.2rem 0 0",
-};
-
-const ctaStyle: React.CSSProperties = {
-  color: "#82b1ff",
-  fontSize: "0.9rem",
-};

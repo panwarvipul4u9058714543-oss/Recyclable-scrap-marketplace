@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PauseCircle, PlayCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { ListingStatus } from "@/lib/listings/listings";
 
 type Action = "pause" | "resume" | "close";
@@ -42,54 +44,51 @@ export function ListingActions({
   }
 
   if (status === "CLOSED") {
-    return <span style={{ color: "#9e9e9e" }}>Closed</span>;
+    return <span className="text-sm text-ash">Closed</span>;
   }
 
   return (
-    <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+    <div className="flex items-center gap-2">
       {status === "ACTIVE" && (
-        <button
+        <Button
           type="button"
           onClick={() => run("pause")}
           disabled={busy}
-          style={actionStyle}
+          variant="secondary"
+          size="sm"
         >
+          <PauseCircle className="h-3.5 w-3.5" />
           Pause
-        </button>
+        </Button>
       )}
       {status === "PAUSED" && (
-        <button
+        <Button
           type="button"
           onClick={() => run("resume")}
           disabled={busy}
-          style={actionStyle}
+          variant="secondary"
+          size="sm"
         >
+          <PlayCircle className="h-3.5 w-3.5" />
           Resume
-        </button>
+        </Button>
       )}
-      <button
+      <Button
         type="button"
         onClick={() => run("close")}
         disabled={busy}
-        style={{ ...actionStyle, color: "#ff8a80" }}
+        variant="ghost"
+        size="sm"
+        className="text-signal-err hover:bg-signal-err/10 hover:text-signal-err"
       >
+        <XCircle className="h-3.5 w-3.5" />
         Close
-      </button>
+      </Button>
       {error && (
-        <span role="alert" style={{ color: "#ff8a80", fontSize: "0.85rem" }}>
+        <span role="alert" className="text-xs text-signal-err">
           {error}
         </span>
       )}
     </div>
   );
 }
-
-const actionStyle: React.CSSProperties = {
-  padding: "0.35rem 0.7rem",
-  fontSize: "0.85rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};

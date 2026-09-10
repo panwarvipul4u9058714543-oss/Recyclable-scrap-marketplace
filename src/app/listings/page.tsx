@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, Plus, UsersRound } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   listListingInterests,
@@ -14,10 +19,10 @@ import {
 import { ListingActions } from "./ListingActions";
 import { SelectBuyerButton } from "./SelectBuyerButton";
 
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "#81c784",
-  PAUSED: "#ffb74d",
-  CLOSED: "#9e9e9e",
+const STATUS_TONE: Record<string, "moss" | "warn" | "neutral"> = {
+  ACTIVE: "moss",
+  PAUSED: "warn",
+  CLOSED: "neutral",
 };
 
 export default async function ListingsPage() {
@@ -28,12 +33,7 @@ export default async function ListingsPage() {
   const isSeller = SELLER_TYPES.some((type) => user.roles.includes(type));
   const listings = await listSellerListings(user.id);
 
-  // Fetch interests and existing connections per listing so each card can show
-  // the interested-buyers panel without a client-side round-trip. A single
-  // batched query for connections keeps this O(1); interests are per-listing.
   const connections = await listSellerConnections(user.id);
-  // Only RESERVED connections hold the listing — cancelled/expired ones are
-  // history and the seller can select again.
   const activeConnectionByListing = new Map(
     connections
       .filter((c) => c.status === "RESERVED")
@@ -48,8 +48,6 @@ export default async function ListingsPage() {
     ),
   );
 
-  // Resolve the selected collector's phone by joining the connection's
-  // collectorId against the interests already fetched for that listing.
   function selectedPhoneFor(listingId: string): string | null {
     const connection = activeConnectionByListing.get(listingId);
     if (!connection) return null;
@@ -59,97 +57,93 @@ export default async function ListingsPage() {
   }
 
   return (
-    <main>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/dashboard"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
       >
-        <h1>Your listings</h1>
-        {isSeller && (
-          <Link href="/listings/new" style={newLinkStyle}>
-            + New listing
-          </Link>
-        )}
-      </div>
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
+      </Link>
+      <PageHeader
+        eyebrow="Seller"
+        title="Your listings"
+        description="Everything you've posted, with the interested buyers and reservation state on each. Pause when your stock is running low; close a listing once collection is done."
+        actions={
+          isSeller ? (
+            <Link href="/listings/new" className="focus-ring inline-flex">
+              <Button variant="primary">
+                <Plus className="h-4 w-4" />+ New listing
+              </Button>
+            </Link>
+          ) : null
+        }
+      />
 
       {!isSeller && (
-        <p>
+        <Card className="p-6 text-sm text-ash">
           Only households and businesses can post listings.{" "}
-          <Link href="/register">Add a seller role</Link> to get started.
-        </p>
+          <Link href="/register" className="text-rust underline-offset-4 hover:underline">
+            Add a seller role
+          </Link>{" "}
+          to get started.
+        </Card>
       )}
 
       {isSeller && listings.length === 0 && (
-        <p style={{ color: "#9e9e9e" }}>
+        <Card className="border-dashed p-6 text-sm text-ash">
           You don&apos;t have any listings yet.{" "}
-          <Link href="/listings/new">Create your first one</Link>.
-        </p>
+          <Link href="/listings/new" className="text-rust underline-offset-4 hover:underline">
+            Create your first one
+          </Link>
+          .
+        </Card>
       )}
 
-      <ul style={{ listStyle: "none", padding: 0 }}>
+      <ul className="mt-2 grid gap-3">
         {listings.map((listing) => (
-          <li key={listing.id} style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: "1rem",
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: "1.1rem" }}>{listing.title}</h2>
-              <span
-                style={{
-                  color: STATUS_COLORS[listing.status] ?? "inherit",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                }}
-              >
-                {listing.status}
-              </span>
-            </div>
-            <p style={metaStyle}>
-              {MATERIAL_LABELS[listing.materialCategory]} · {listing.quantityMin}
-              –{listing.quantityMax} {QUANTITY_UNIT_LABELS[listing.quantityUnit]}{" "}
-              · {listing.locality} · {AVAILABILITY_LABELS[listing.availability]}
-            </p>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "1rem",
-                marginTop: "0.6rem",
-              }}
-            >
-              <ListingActions id={listing.id} status={listing.status} />
-              {listing.status !== "CLOSED" && (
-                <Link
-                  href={`/listings/${listing.id}/edit`}
-                  style={{ fontSize: "0.85rem" }}
-                >
-                  Edit
-                </Link>
-              )}
-            </div>
-            <BuyersPanel
-              listingId={listing.id}
-              interests={interestsByListing.get(listing.id) ?? []}
-              selectedCollectorPhone={selectedPhoneFor(listing.id)}
-              activeConnectionId={
-                activeConnectionByListing.get(listing.id)?.id ?? null
-              }
-            />
+          <li key={listing.id}>
+            <Card className="p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <h2 className="font-serif text-xl tracking-tight text-ink">
+                  {listing.title}
+                </h2>
+                <span className="inline-flex items-center gap-2">
+                  <Badge tone={STATUS_TONE[listing.status] ?? "neutral"}>
+                    {listing.status}
+                  </Badge>
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-ash">
+                <span className="text-ink">
+                  {MATERIAL_LABELS[listing.materialCategory]}
+                </span>{" "}
+                · {listing.quantityMin}–{listing.quantityMax}{" "}
+                {QUANTITY_UNIT_LABELS[listing.quantityUnit]} · {listing.locality}{" "}
+                · {AVAILABILITY_LABELS[listing.availability]}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <ListingActions id={listing.id} status={listing.status} />
+                {listing.status !== "CLOSED" && (
+                  <Link
+                    href={`/listings/${listing.id}/edit`}
+                    className="focus-ring rounded-sm text-sm text-rust hover:underline"
+                  >
+                    Edit
+                  </Link>
+                )}
+              </div>
+              <BuyersPanel
+                listingId={listing.id}
+                interests={interestsByListing.get(listing.id) ?? []}
+                selectedCollectorPhone={selectedPhoneFor(listing.id)}
+                activeConnectionId={
+                  activeConnectionByListing.get(listing.id)?.id ?? null
+                }
+              />
+            </Card>
           </li>
         ))}
       </ul>
-
-      <p style={{ marginTop: "1.5rem" }}>
-        <Link href="/dashboard">← Back to dashboard</Link>
-      </p>
     </main>
   );
 }
@@ -161,9 +155,6 @@ interface BuyersPanelProps {
   activeConnectionId: string | null;
 }
 
-// Rendered under each listing: either a reservation banner linking into the
-// connection detail when the seller has picked someone, or the list of
-// interested collectors with a Select button next to each.
 function BuyersPanel({
   listingId,
   interests,
@@ -172,38 +163,37 @@ function BuyersPanel({
 }: BuyersPanelProps) {
   if (selectedCollectorPhone && activeConnectionId) {
     return (
-      <p style={selectedStyle}>
-        Reserved for <strong>{selectedCollectorPhone}</strong> —{" "}
-        <Link href={`/connections/${activeConnectionId}`}>
+      <div className="mt-4 rounded-md border border-moss/30 bg-moss-soft px-4 py-3 text-sm text-moss">
+        Reserved for <strong className="font-medium">{selectedCollectorPhone}</strong> —{" "}
+        <Link
+          href={`/connections/${activeConnectionId}`}
+          className="underline underline-offset-4 hover:no-underline"
+        >
           open the connection
         </Link>{" "}
         to chat, reveal contact, or cancel.
-      </p>
+      </div>
     );
   }
   if (interests.length === 0) {
     return (
-      <p style={{ ...metaStyle, marginTop: "0.6rem" }}>No interested buyers yet.</p>
+      <p className="mt-4 flex items-center gap-2 text-xs text-ash">
+        <UsersRound className="h-3.5 w-3.5" /> No interested buyers yet.
+      </p>
     );
   }
   return (
-    <div style={{ marginTop: "0.6rem" }}>
-      <h3 style={{ fontSize: "0.9rem", margin: "0 0 0.4rem" }}>
-        Interested buyers
+    <div className="mt-4 border-t border-dune/60 pt-4">
+      <h3 className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-ash">
+        <UsersRound className="h-3 w-3" /> Interested buyers
       </h3>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="grid divide-y divide-dune/60">
         {interests.map((i) => (
           <li
             key={i.id}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "0.6rem",
-              padding: "0.3rem 0",
-            }}
+            className="flex items-center justify-between gap-3 py-2"
           >
-            <span>{i.collectorPhone}</span>
+            <span className="font-mono text-sm text-ink">{i.collectorPhone}</span>
             <SelectBuyerButton
               listingId={listingId}
               collectorId={i.collectorId}
@@ -215,31 +205,3 @@ function BuyersPanel({
     </div>
   );
 }
-
-const selectedStyle: React.CSSProperties = {
-  color: "#81c784",
-  fontSize: "0.9rem",
-  margin: "0.6rem 0 0",
-};
-
-const newLinkStyle: React.CSSProperties = {
-  padding: "0.5rem 0.9rem",
-  borderRadius: 6,
-  background: "#2e7d32",
-  color: "#fff",
-  textDecoration: "none",
-  fontSize: "0.9rem",
-};
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.9rem",
-  margin: "0.4rem 0 0",
-};
