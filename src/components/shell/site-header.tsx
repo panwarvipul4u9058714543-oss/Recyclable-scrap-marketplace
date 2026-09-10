@@ -8,6 +8,7 @@ import {
   COLLECTOR_ROLES,
   SELLER_ROLES,
 } from "@/lib/roles";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { HeaderAuthArea } from "./header-auth-area";
 import { MobileNav } from "./mobile-nav";
 
@@ -67,7 +68,8 @@ export async function SiteHeader() {
           </nav>
         )}
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <div className="hidden md:flex">
             <HeaderAuthArea
               phone={user?.phone ?? null}

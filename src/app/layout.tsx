@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/shell/site-header";
 import { SiteFooter } from "@/components/shell/site-footer";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
 
 const sans = Inter({
@@ -38,14 +39,26 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${sans.variable} ${serif.variable} ${mono.variable}`}
     >
       <body className="min-h-dvh font-sans text-ink antialiased">
-        <div className="flex min-h-dvh flex-col">
-          <SiteHeader />
-          <div className="flex-1">{children}</div>
-          <SiteFooter />
-        </div>
+        <ThemeProvider>
+          {/* Skip to content — first tab-stop for keyboard users. */}
+          <a
+            href="#main-content"
+            className="focus-ring sr-only rounded-md focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-ink focus:px-3 focus:py-2 focus:text-sm focus:text-paper"
+          >
+            Skip to content
+          </a>
+          <div className="flex min-h-dvh flex-col">
+            <SiteHeader />
+            <div id="main-content" className="flex-1">
+              {children}
+            </div>
+            <SiteFooter />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );
