@@ -7,6 +7,12 @@ import {
   getSupplyDemandDensity,
   type KpiSummary,
 } from "@/lib/analytics/kpis";
+import {
+  PILOT_TARGETS,
+  compareWithPilotTargets,
+  type ComparisonStatus,
+  type KpiComparison,
+} from "@/lib/analytics/pilot-targets";
 import { getCurrentUser } from "@/lib/auth/current-user";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +34,7 @@ export default async function AdminAnalyticsPage() {
     getSupplyDemandDensity(),
     getRepeatUsage(),
   ]);
+  const pilotComparison = compareWithPilotTargets(summary);
 
   return (
     <main>
@@ -38,7 +45,8 @@ export default async function AdminAnalyticsPage() {
       <p style={{ color: "#9e9e9e" }}>
         Aggregated from analytics events emitted on every state-changing seam.
         Percentages read as “—” until at least one outcome (completed or
-        failed) is recorded.
+        failed) is recorded. KPI definitions live in{" "}
+        <code>docs/analytics-kpis.md</code>.
       </p>
 
       <section aria-label="Headline KPIs" style={{ marginTop: "1.25rem" }}>
@@ -76,6 +84,53 @@ export default async function AdminAnalyticsPage() {
           <KpiTile label="Complaints" value={summary.complaintsCount} />
           <KpiTile label="Repeat completers" value={summary.repeatCompleters} />
         </div>
+      </section>
+
+      <section
+        aria-label="Pilot comparison"
+        style={{ marginTop: "1.5rem" }}
+      >
+        <h2 style={{ fontSize: "1.1rem" }}>Pilot-target comparison</h2>
+        <p style={{ color: "#9e9e9e", fontSize: "0.9rem", marginTop: 0 }}>
+          Live KPIs against the pilot targets defined in{" "}
+          <code>src/lib/analytics/pilot-targets.ts</code>. Update that file
+          when the pilot targets change. Rows read as{" "}
+          <strong>unknown</strong> until enough data is recorded to compute
+          the value (e.g. no outcomes yet → rates are unknown).
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Metric</th>
+                <th style={thStyle}>Actual</th>
+                <th style={thStyle}>Target</th>
+                <th style={thStyle}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pilotComparison.map((row) => (
+                <tr key={row.key}>
+                  <td style={tdStyle}>{row.label}</td>
+                  <td style={tdStyle}>{formatComparisonValue(row.actual, row.isRate)}</td>
+                  <td style={tdStyle}>
+                    {row.direction === "at_or_above" ? "≥ " : "≤ "}
+                    {formatComparisonValue(row.target, row.isRate)}
+                  </td>
+                  <td style={tdStyle}>
+                    <StatusBadge status={row.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={{ color: "#9e9e9e", fontSize: "0.8rem", marginTop: "0.5rem" }}>
+          Pilot targets:{" "}
+          {Object.entries(PILOT_TARGETS)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ")}
+        </p>
       </section>
 
       <section aria-label="Channel breakdown" style={{ marginTop: "1.5rem" }}>
@@ -231,6 +286,36 @@ function DensityTable({
 function formatRate(rate: KpiSummary["completionRate"]): string {
   if (rate === null) return "—";
   return `${(rate * 100).toFixed(1)}%`;
+}
+
+function formatComparisonValue(
+  value: KpiComparison["actual"] | KpiComparison["target"],
+  isRate: boolean,
+): string {
+  if (value === null) return "—";
+  if (isRate) return `${(value * 100).toFixed(1)}%`;
+  return `${value}`;
+}
+
+function StatusBadge({ status }: { status: ComparisonStatus }) {
+  const bg =
+    status === "met" ? "#2e7d32" : status === "missed" ? "#c62828" : "#616161";
+  const label = status === "met" ? "Met" : status === "missed" ? "Missed" : "Unknown";
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "0.15rem 0.55rem",
+        borderRadius: 999,
+        background: bg,
+        color: "#fff",
+        fontSize: "0.75rem",
+        fontWeight: 600,
+      }}
+    >
+      {label}
+    </span>
+  );
 }
 
 function formatSeconds(seconds: number | null): string {

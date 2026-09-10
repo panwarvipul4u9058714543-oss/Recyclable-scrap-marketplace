@@ -186,6 +186,38 @@ adds the dealer / recycler bulk marketplace. Built in steps:
    `GET /api/saved-search-alerts` and
    `POST /api/saved-search-alerts/[id]/seen`.
 
+Issue [#7](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/7)
+adds marketplace analytics and operational metrics. Built in steps:
+
+1. **AnalyticsEvent schema + recording seams** ✅ — every state-changing
+   service call emits one `AnalyticsEvent` row via `recordEvent`
+   (`src/lib/analytics/events.ts`), best-effort and never allowed to fail
+   the surrounding business write. The event set distinguishes downloads
+   (registrations), listings, listing views, leads (interests),
+   reservations, mutual reveals, outcomes (completed / failed / cancelled),
+   route activity (started + match-notified), bulk activity (requirement +
+   response lifecycle) and saved-search alerts. `channel` splits
+   `HOUSEHOLD`, `ROUTE` and `BULK` so route mode and the bulk marketplace
+   can be measured separately from household discovery. `material`,
+   `locality` and `actorRole` are denormalised so cohort queries stay
+   index-fast.
+2. **KPI aggregation + admin analytics UI** ✅ — `getKpiSummary`,
+   `getKpiChannelBreakdown`, `getSupplyDemandDensity` and `getRepeatUsage`
+   derive headline metrics from the recorded events: totals for
+   registrations / listings / views / leads / reservations /
+   completions / failures; rates for completion, pickup-failure and
+   no-show; median response time from reservation to outcome; complaints
+   (from the `Report` table); repeat completers. `/admin/analytics`
+   renders the tiles + tables, admin-gated (a non-admin gets a 404).
+   `GET /api/admin/analytics/kpis` serves the same numbers to tooling.
+3. **KPI documentation + pilot-target comparison** ✅ — the KPI catalog
+   lives in [`docs/analytics-kpis.md`](docs/analytics-kpis.md), naming
+   every event and every metric definition. The pilot targets live in
+   `src/lib/analytics/pilot-targets.ts` and the admin page surfaces the
+   comparison as **met / missed / unknown** for each metric, so the
+   platform's initial success review can compare results with the pilot
+   targets.
+
 3. **Route match notifications with per-user preferences** ✅ — when a new
    listing is created, `fanOutForNewListing` inserts a `RouteNotification`
    for every collector whose `ACTIVE` route matches that specific listing
