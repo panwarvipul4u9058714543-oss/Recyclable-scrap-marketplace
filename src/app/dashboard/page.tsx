@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isProfessionalRole } from "@/lib/monetisation/plans";
 import {
   BULK_BUYER_ROLES,
   BULK_SUPPLIER_ROLES,
@@ -32,6 +33,7 @@ export default async function DashboardPage() {
   const canPublishBulk = user.roles.some((r) => BULK_BUYER_ROLES.includes(r));
   const canRespondBulk = user.roles.some((r) => BULK_SUPPLIER_ROLES.includes(r));
   const canBulk = canPublishBulk || canRespondBulk;
+  const isPro = user.roles.some(isProfessionalRole);
 
   return (
     <main>
@@ -100,6 +102,11 @@ export default async function DashboardPage() {
             <Link href="/profile" style={ctaStyle}>
               Edit your profile
             </Link>
+            {isPro && (
+              <Link href="/monetisation" style={ctaStyle}>
+                Paid features
+              </Link>
+            )}
             {user.isAdmin && (
               <Link href="/moderation" style={ctaStyle}>
                 Moderation queue

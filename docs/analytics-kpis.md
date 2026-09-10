@@ -51,6 +51,16 @@ Each row carries:
 | `BULK_RESPONSE_COMPLETED`      | `BULK`       | `markBulkCompleted` (`metadata.responseSeconds` set) |
 | `BULK_RESPONSE_FAILED`         | `BULK`       | `markBulkFailed` (`metadata.failureReason` set) |
 | `SAVED_SEARCH_ALERT_CREATED`   | `BULK`       | per new row created by `fanOutSavedSearchesForNewListing` |
+| `PROMOTION_PURCHASED`          | `GENERAL`    | `purchasePromotion` (`metadata.tier`, `metadata.priceCents`, `metadata.listingId`) |
+| `PROMOTION_ACTIVATED`          | `GENERAL`    | `purchasePromotion` on the same call — promotion starts immediately |
+| `PROMOTION_CANCELLED`          | `GENERAL`    | `cancelPromotion` |
+| `PROMOTION_EXPIRED`            | `GENERAL`    | `expirePromotions` — one per row swept past its `endsAt` |
+| `PROMOTED_LISTING_VIEWED`      | `HOUSEHOLD`  | `discoverNearby` — additional event when a returned listing is currently promoted |
+| `SUBSCRIPTION_STARTED`         | `GENERAL`    | `subscribe` (`metadata.plan`, `metadata.priceCents`) |
+| `SUBSCRIPTION_CANCELLED`       | `GENERAL`    | `cancelSubscription` |
+| `AD_PLACEMENT_CREATED`         | `GENERAL`    | `createAdPlacement` |
+| `AD_PLACEMENT_IMPRESSION`      | `GENERAL`    | `recordAdImpression` — one per placement mount on a surface page |
+| `AD_PLACEMENT_CLICK`           | `GENERAL`    | `recordAdClick` — one per user click on the placement's CTA |
 
 ## The five distinct hops
 
@@ -109,6 +119,25 @@ Returns `byLocality`, `byMaterial` and `byRole` — each is a list of
 - `key` comes from `locality`, `material` and `actorRole` respectively.
 - Rows are sorted by `supply + demand` descending so the busiest cell
   surfaces first.
+
+### Monetisation KPIs (`getMonetisationKpis`)
+
+Aggregates exposure, activation and usage of paid features from issue #8:
+
+- `activePromotions`, `activeSubscriptions`, `activeAdPlacements` — count of
+  the currently-in-flight domain rows (source of truth: `Promotion`,
+  `PremiumSubscription`, `AdPlacement`).
+- `totalPromotionsPurchased/Cancelled/Expired` — lifecycle events in-window.
+- `totalSubscriptionsStarted/Cancelled` — subscription lifecycle in-window.
+- `adImpressions`, `adClicks`, `adClickThroughRate` — sponsored-panel
+  activation on the surfaces that render `AdPanel`.
+- `promotionRevenueCentsDeclared`, `subscriptionRevenueCentsDeclared` —
+  sum of `metadata.priceCents` on the purchase events; declared only, since
+  no real currency is charged in this initial release.
+
+Because everything monetisation-related is gated by `MONETISATION_ENABLED`,
+turning the flag off simply stops new events; the KPIs stay readable and
+freeze naturally.
 
 ### Repeat usage (`getRepeatUsage`)
 

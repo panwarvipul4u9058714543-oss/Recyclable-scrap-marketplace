@@ -40,6 +40,9 @@ export default defineConfig({
       DATABASE_URL: "file:./e2e.db",
       // Expose the mocked OTP so the e2e flow can read and submit it.
       RSM_EXPOSE_OTP: "1",
+      // Turn on monetisation so the issue #8 flows (promotion purchase,
+      // subscription, ad placement) are exercised end to end.
+      MONETISATION_ENABLED: "1",
     },
   },
 });

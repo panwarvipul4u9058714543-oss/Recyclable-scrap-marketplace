@@ -218,6 +218,50 @@ adds marketplace analytics and operational metrics. Built in steps:
    platform's initial success review can compare results with the pilot
    targets.
 
+Issue [#8](https://github.com/panwarvipul4u9058714543-oss/Recyclable-scrap-marketplace/issues/8)
+adds optional marketplace monetisation without changing the direct-
+negotiation and direct-payment model. Basic listing and discovery stay
+free for households and small collectors; professional users (dealers,
+businesses, recyclers) can buy promoted listings, subscriptions and see
+operator-configured ad placements. The whole surface is gated by the
+`MONETISATION_ENABLED` env var so it can be turned off safely. Built in
+steps:
+
+1. **Monetisation schema + service** ✅ — `Promotion`, `PremiumSubscription`
+   and `AdPlacement` models with a service split across
+   `src/lib/monetisation/{config,plans,promotions,subscriptions,ads,errors}.ts`.
+   Purchases and subscriptions are refused for non-professional roles;
+   the global flag disable refuses writes and empties reads. Recording
+   seams emit `PROMOTION_PURCHASED / ACTIVATED / CANCELLED / EXPIRED`,
+   `SUBSCRIPTION_STARTED / CANCELLED`, and
+   `AD_PLACEMENT_CREATED / IMPRESSION / CLICK` events.
+2. **Discovery boost + admin surface + KPIs** ✅ — `discoverNearby` folds
+   in active promotions: promoted listings sort above non-promoted
+   (PREMIUM above STANDARD), each result carries a `promoted` tier label,
+   and a promoted view additionally emits `PROMOTED_LISTING_VIEWED`.
+   `getMonetisationKpis` aggregates active-in-flight counts, purchase /
+   cancel / expiry counts, ad impressions and clicks, and declared
+   revenue. `/admin/monetisation` and `/api/admin/monetisation/ads` let
+   an operator configure ad placements (create + pause / activate); the
+   `/admin/analytics` page gets a new Monetisation section with an
+   on/off indicator.
+3. **User monetisation UI + e2e** ✅ — `/monetisation` is the catalog
+   (with a global-disabled banner, an off-catalog banner for non-pros
+   and a subscription CTA); `/monetisation/promote/[listingId]` and
+   `/monetisation/subscription` are the pro purchase and management
+   flows; `AdPanel` renders active placements below the primary list on
+   `/nearby` and `/bulk/browse`, and posts one impression per placement
+   on mount plus a click on the CTA anchor. Exposed at
+   `POST/GET /api/monetisation/promotions`,
+   `DELETE /api/monetisation/promotions/[id]`,
+   `POST/GET/DELETE /api/monetisation/subscription`,
+   `POST /api/monetisation/ads/[id]/impression` and
+   `POST /api/monetisation/ads/[id]/click`. Dashboard shows a *Paid
+   features* CTA to professional users. `tests/e2e/monetisation.spec.ts`
+   covers a pro promoting a listing (with the badge visible to a
+   collector) and an admin configuring a placement that renders on
+   `/nearby`.
+
 3. **Route match notifications with per-user preferences** ✅ — when a new
    listing is created, `fanOutForNewListing` inserts a `RouteNotification`
    for every collector whose `ACTIVE` route matches that specific listing

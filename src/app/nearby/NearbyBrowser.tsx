@@ -24,6 +24,7 @@ interface NearbyResult {
   locality: string;
   availability: Availability;
   distanceKm: number;
+  promoted: { tier: "STANDARD" | "PREMIUM" } | null;
 }
 
 /** Per-listing state for the "I'm interested" toggle. */
@@ -292,7 +293,22 @@ export function NearbyBrowser() {
                     alignItems: "baseline",
                   }}
                 >
-                  <h3 style={{ margin: 0, fontSize: "1rem" }}>{r.title}</h3>
+                  <h3 style={{ margin: 0, fontSize: "1rem" }}>
+                    {r.title}
+                    {r.promoted && (
+                      <span
+                        style={
+                          r.promoted.tier === "PREMIUM"
+                            ? featuredBadgeStyle
+                            : promotedBadgeStyle
+                        }
+                      >
+                        {r.promoted.tier === "PREMIUM"
+                          ? "Featured"
+                          : "Promoted"}
+                      </span>
+                    )}
+                  </h3>
                   <span style={distanceStyle}>{r.distanceKm.toFixed(1)} km</span>
                 </div>
                 <p style={metaStyle}>
@@ -404,4 +420,20 @@ const distanceStyle: React.CSSProperties = {
   color: "#81c784",
   fontSize: "0.85rem",
   fontWeight: 600,
+};
+
+const promotedBadgeStyle: React.CSSProperties = {
+  marginLeft: "0.5rem",
+  padding: "0.1rem 0.45rem",
+  borderRadius: 999,
+  background: "#3949ab",
+  color: "#fff",
+  fontSize: "0.7rem",
+  fontWeight: 600,
+  verticalAlign: "middle",
+};
+
+const featuredBadgeStyle: React.CSSProperties = {
+  ...promotedBadgeStyle,
+  background: "#ef6c00",
 };

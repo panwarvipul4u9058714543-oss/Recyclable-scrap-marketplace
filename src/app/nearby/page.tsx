@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdPanel } from "@/app/components/AdPanel";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { COLLECTOR_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { NearbyBrowser } from "./NearbyBrowser";
@@ -37,6 +38,7 @@ export default async function NearbyPage() {
         Enter your search location and pick the filters that matter to you.
       </p>
       <NearbyBrowser />
+      <AdPanel surface="DISCOVERY" />
     </main>
   );
 }

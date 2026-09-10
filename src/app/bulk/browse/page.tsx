@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdPanel } from "@/app/components/AdPanel";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { BULK_SUPPLIER_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { BulkBrowser } from "./BulkBrowser";
@@ -38,6 +39,7 @@ export default async function BulkBrowsePage() {
         making contact.
       </p>
       <BulkBrowser />
+      <AdPanel surface="BULK_BROWSE" />
     </main>
   );
 }
