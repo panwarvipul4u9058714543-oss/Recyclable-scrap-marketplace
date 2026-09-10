@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, BadgeCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getBulkRequirement } from "@/lib/bulk/requirements";
 import { listResponsesForRequirement } from "@/lib/bulk/responses";
@@ -29,12 +33,17 @@ export default async function RequirementDetailPage({
   const requirement = await getBulkRequirement(params.id);
   if (!requirement) {
     return (
-      <main>
-        <p>
-          <Link href="/bulk">← Back to bulk marketplace</Link>
-        </p>
-        <h1>Requirement not found</h1>
-        <p>The requirement may have been closed or removed.</p>
+      <main className="container-page py-10 sm:py-14">
+        <Link
+          href="/bulk"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to bulk marketplace
+        </Link>
+        <PageHeader eyebrow="Bulk" title="Requirement not found" />
+        <Card className="p-6 text-sm text-ash">
+          The requirement may have been closed or removed.
+        </Card>
       </main>
     );
   }
@@ -49,92 +58,118 @@ export default async function RequirementDetailPage({
     : [];
 
   return (
-    <main>
-      <p>
-        <Link href={isBuyer ? "/bulk" : "/bulk/browse"}>
-          ← Back to {isBuyer ? "your requirements" : "browse"}
-        </Link>
-      </p>
-      <h1>{MATERIAL_LABELS[requirement.material as MaterialCategory]}</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        Wants at least {requirement.minQuantity}{" "}
-        {QUANTITY_UNIT_LABELS[requirement.minQuantityUnit as QuantityUnit]} in{" "}
-        {requirement.region}
-        {requirement.deadlineAt && (
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href={isBuyer ? "/bulk" : "/bulk/browse"}
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />{" "}
+        Back to {isBuyer ? "your requirements" : "browse"}
+      </Link>
+      <PageHeader
+        eyebrow={isBuyer ? "Requirement · buyer" : "Requirement"}
+        title={MATERIAL_LABELS[requirement.material as MaterialCategory]}
+        description={
           <>
-            {" "}
-            · deadline{" "}
-            <time
-              dateTime={requirement.deadlineAt.toISOString()}
-            >
-              {requirement.deadlineAt.toLocaleDateString()}
-            </time>
+            Wants at least {requirement.minQuantity}{" "}
+            {QUANTITY_UNIT_LABELS[requirement.minQuantityUnit as QuantityUnit]}{" "}
+            in {requirement.region}
+            {requirement.deadlineAt && (
+              <>
+                {" "}
+                · deadline{" "}
+                <time dateTime={requirement.deadlineAt.toISOString()}>
+                  {requirement.deadlineAt.toLocaleDateString()}
+                </time>
+              </>
+            )}
+            {" · "}status{" "}
+            <Badge tone={requirement.status === "ACTIVE" ? "moss" : "neutral"}>
+              {requirement.status}
+            </Badge>
           </>
-        )}
-        {" "}· status {requirement.status}
-      </p>
+        }
+      />
+
       {requirement.qualityNotes && (
-        <p style={{ margin: "0.4rem 0" }}>{requirement.qualityNotes}</p>
+        <Card className="mb-6 p-5">
+          <p className="text-sm leading-relaxed text-ink/85">
+            {requirement.qualityNotes}
+          </p>
+        </Card>
       )}
 
-      <section aria-label="Buyer" style={buyerBadgeStyle}>
-        <div>
-          <strong>
-            {requirement.buyer.organisationName ??
-              requirement.buyer.displayName ??
-              "Buyer"}
-          </strong>{" "}
-          <span style={{ color: "#9e9e9e", fontSize: "0.85rem" }}>
-            ·{" "}
-            {requirement.buyer.roles
-              .map((r) => ROLE_LABELS[r])
-              .join(", ") || "Buyer"}
-          </span>
-        </div>
-        {requirement.buyer.registrationId && (
-          <div style={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-            Registration: <code>{requirement.buyer.registrationId}</code>
+      <section aria-label="Buyer" className="mb-6">
+        <Card className="p-5">
+          <div className="flex items-center gap-2">
+            <BadgeCheck className="h-4 w-4 text-moss" />
+            <strong className="font-serif text-lg tracking-tight text-ink">
+              {requirement.buyer.organisationName ??
+                requirement.buyer.displayName ??
+                "Buyer"}
+            </strong>
+            <span className="text-xs text-ash">
+              ·{" "}
+              {requirement.buyer.roles
+                .map((r) => ROLE_LABELS[r])
+                .join(", ") || "Buyer"}
+            </span>
           </div>
-        )}
-        <div style={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-          Completed as buyer: {requirement.buyer.reputation.completedAsCollector}{" "}
-          · Failed: {requirement.buyer.reputation.failed}
-          {requirement.buyer.reputation.rating.count > 0 && (
-            <>
-              {" "}
-              · Rating{" "}
-              {requirement.buyer.reputation.rating.average?.toFixed(1)} (
-              {requirement.buyer.reputation.rating.count})
-            </>
+          {requirement.buyer.registrationId && (
+            <p className="mt-1 text-sm text-ash">
+              Registration:{" "}
+              <code className="font-mono text-ink">
+                {requirement.buyer.registrationId}
+              </code>
+            </p>
           )}
-        </div>
-        <Link href={`/u/${requirement.buyer.id}`} style={{ fontSize: "0.85rem" }}>
-          View buyer profile
-        </Link>
+          <p className="mt-1 text-sm text-ash">
+            Completed as buyer:{" "}
+            <span className="font-mono text-ink">
+              {requirement.buyer.reputation.completedAsCollector}
+            </span>{" "}
+            · Failed:{" "}
+            <span className="font-mono text-ink">
+              {requirement.buyer.reputation.failed}
+            </span>
+            {requirement.buyer.reputation.rating.count > 0 && (
+              <>
+                {" "}
+                · Rating{" "}
+                <span className="font-mono text-ink">
+                  {requirement.buyer.reputation.rating.average?.toFixed(1)}
+                </span>{" "}
+                ({requirement.buyer.reputation.rating.count})
+              </>
+            )}
+          </p>
+          <Link
+            href={`/u/${requirement.buyer.id}`}
+            className="mt-3 inline-flex text-sm text-rust underline-offset-4 hover:underline"
+          >
+            View buyer profile
+          </Link>
+        </Card>
       </section>
 
       {!isBuyer && isSupplier && requirement.status === "ACTIVE" && (
-        <section
-          aria-label="Respond to this requirement"
-          style={{ marginTop: "1.5rem" }}
-        >
-          <h2 style={{ fontSize: "1.05rem" }}>Respond to this requirement</h2>
+        <section aria-label="Respond to this requirement" className="space-y-3">
+          <h2 className="font-serif text-2xl tracking-tight">
+            Respond to this requirement
+          </h2>
           <RespondToRequirementForm requirementId={requirement.id} />
         </section>
       )}
 
       {isBuyer && (
-        <section
-          aria-label="Responses"
-          style={{ marginTop: "1.5rem" }}
-        >
-          <h2 style={{ fontSize: "1.05rem" }}>
+        <section aria-label="Responses" className="space-y-3">
+          <h2 className="font-serif text-2xl tracking-tight">
             Responses ({responses.length})
           </h2>
           {responses.length === 0 ? (
-            <p style={{ color: "#9e9e9e" }}>
+            <Card className="border-dashed p-5 text-sm text-ash">
               No supplier has responded yet.
-            </p>
+            </Card>
           ) : (
             <ResponsesList
               responses={responses.map((r) => ({
@@ -152,14 +187,3 @@ export default async function RequirementDetailPage({
     </main>
   );
 }
-
-const buyerBadgeStyle: React.CSSProperties = {
-  marginTop: "1rem",
-  padding: "0.7rem 0.9rem",
-  borderRadius: 6,
-  background: "#141821",
-  border: "1px solid #2a2f3a",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.3rem",
-};

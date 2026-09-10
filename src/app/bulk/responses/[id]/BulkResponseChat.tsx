@@ -2,6 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  CheckCircle2,
+  Clock,
+  Eye,
+  MessageCircle,
+  Phone,
+  Send,
+  ShieldOff,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Textarea } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -37,10 +54,6 @@ interface Props {
   currentUserId: string;
 }
 
-/**
- * Interactive shell for a SELECTED bulk response: chat + reveal + outcome
- * form. Mirrors the household connection chat, scoped to a bulk response.
- */
 export function BulkResponseChat({
   response,
   initialMessages,
@@ -72,14 +85,11 @@ export function BulkResponseChat({
     setPosting(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/bulk-responses/${response.id}/messages`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ body: draft }),
-        },
-      );
+      const res = await fetch(`/api/bulk-responses/${response.id}/messages`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: draft }),
+      });
       if (!res.ok) {
         setError("Couldn't send that message. Please try again.");
         return;
@@ -140,14 +150,11 @@ export function BulkResponseChat({
     }
     setBusyAction(kind);
     try {
-      const res = await fetch(
-        `/api/bulk-responses/${response.id}/${kind}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const res = await fetch(`/api/bulk-responses/${response.id}/${kind}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!res.ok) {
         setError(
           kind === "complete"
@@ -193,302 +200,308 @@ export function BulkResponseChat({
   const otherRole = response.viewerIsBuyer ? "supplier" : "buyer";
 
   return (
-    <div>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
+    <div className="space-y-5">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
 
-      <section aria-label="Contact" style={boxStyle}>
-        {response.contactRevealed ? (
-          <p style={{ margin: 0 }}>
-            <strong>{otherRole === "supplier" ? "Supplier" : "Buyer"}:</strong>{" "}
-            <a href={`tel:${otherPhone}`}>{otherPhone}</a>
-          </p>
-        ) : (
-          <>
-            <p style={{ margin: 0 }}>
-              Exact contact details are hidden until both parties reveal.
-            </p>
-            <ul style={{ margin: "0.4rem 0", paddingLeft: "1.2rem" }}>
-              <li>
-                You:{" "}
-                {response.youRevealed ? (
-                  <strong>revealed</strong>
-                ) : (
-                  <em>not yet</em>
-                )}
-              </li>
-              <li>
-                Other {otherRole}:{" "}
-                {response.counterpartyRevealed ? (
-                  <strong>revealed</strong>
-                ) : (
-                  <em>not yet</em>
-                )}
-              </li>
-            </ul>
-            {!response.youRevealed && !isTerminal && (
-              <button
-                type="button"
-                onClick={reveal}
-                disabled={busyAction === "reveal"}
-                style={primaryButtonStyle}
-              >
-                {busyAction === "reveal" ? "Revealing…" : "Reveal my contact"}
-              </button>
+      <section aria-label="Contact" role="region">
+        <Card className="p-5">
+          <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-ash">
+            {response.contactRevealed ? (
+              <>
+                <Phone className="h-3.5 w-3.5" /> Contact revealed
+              </>
+            ) : (
+              <>
+                <ShieldOff className="h-3.5 w-3.5" /> Contact hidden
+              </>
             )}
-          </>
-        )}
+          </div>
+          {response.contactRevealed ? (
+            <p className="text-[15px] text-ink">
+              <strong className="font-medium">
+                {otherRole === "supplier" ? "Supplier" : "Buyer"}:
+              </strong>{" "}
+              <a
+                href={`tel:${otherPhone}`}
+                className="font-mono text-rust underline-offset-4 hover:underline"
+              >
+                {otherPhone}
+              </a>
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-ink">
+                Exact contact details are hidden until both parties reveal.
+              </p>
+              <ul className="mt-3 space-y-1 text-sm">
+                <li className="flex items-center gap-2">
+                  <span className="text-ash">You:</span>
+                  {response.youRevealed ? (
+                    <strong className="font-medium text-moss">revealed</strong>
+                  ) : (
+                    <em className="text-ash">not yet</em>
+                  )}
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-ash">Other {otherRole}:</span>
+                  {response.counterpartyRevealed ? (
+                    <strong className="font-medium text-moss">revealed</strong>
+                  ) : (
+                    <em className="text-ash">not yet</em>
+                  )}
+                </li>
+              </ul>
+              {!response.youRevealed && !isTerminal && (
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    onClick={reveal}
+                    disabled={busyAction === "reveal"}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    {busyAction === "reveal"
+                      ? "Revealing…"
+                      : "Reveal my contact"}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </Card>
       </section>
 
-      <section aria-label="Status" style={boxStyle}>
-        <p style={{ margin: 0 }}>
-          <strong>Status:</strong> {response.status}
-        </p>
-        {!isTerminal && (
-          <>
-            {response.expiresAt && (
-              <p style={{ margin: "0.4rem 0 0", color: "#9e9e9e" }}>
+      <section aria-label="Status" role="region">
+        <Card className="p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm">
+              <strong className="font-medium text-ink">Status:</strong>{" "}
+              <span className="font-mono text-ink">{response.status}</span>
+            </p>
+            {!isTerminal && response.expiresAt && (
+              <p className="flex items-center gap-1 text-xs text-ash">
+                <Clock className="h-3 w-3" />
                 Match expires{" "}
                 {new Date(response.expiresAt).toLocaleString()}.
               </p>
             )}
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                flexWrap: "wrap",
-                marginTop: "0.6rem",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() =>
-                  setOutcomeMode(outcomeMode === "complete" ? "none" : "complete")
-                }
-                style={primaryButtonStyle}
-              >
-                Mark as completed
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setOutcomeMode(outcomeMode === "fail" ? "none" : "fail")
-                }
-                style={secondaryButtonStyle}
-              >
-                Mark as failed
-              </button>
-              <button
-                type="button"
-                onClick={cancel}
-                disabled={busyAction === "cancel"}
-                style={secondaryButtonStyle}
-              >
-                {busyAction === "cancel" ? "Cancelling…" : "Cancel match"}
-              </button>
-            </div>
-            {outcomeMode !== "none" && (
-              <form
-                onSubmit={(e) => submitOutcome(outcomeMode, e)}
-                style={outcomeFormStyle}
-                aria-label={
-                  outcomeMode === "complete"
-                    ? "Complete match"
-                    : "Report failure"
-                }
-              >
-                <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.4rem" }}>
-                  {outcomeMode === "complete" ? "Pickup complete" : "Pickup failed"}
-                </h3>
-                {outcomeMode === "fail" && (
-                  <>
-                    <label htmlFor="failureReason">
-                      What went wrong? (optional)
-                    </label>
-                    <textarea
-                      id="failureReason"
-                      maxLength={500}
-                      value={failureReason}
-                      onChange={(e) => setFailureReason(e.target.value)}
-                      style={{ ...inputStyle, minHeight: 80, width: "100%" }}
-                    />
-                  </>
-                )}
-                <label htmlFor="actualQuantity">
-                  Actual quantity (optional)
-                </label>
-                <input
-                  id="actualQuantity"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={actualQuantity}
-                  onChange={(e) => setActualQuantity(e.target.value)}
-                  style={inputStyle}
-                />
-                <label htmlFor="finalPrice">Final price (optional)</label>
-                <input
-                  id="finalPrice"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={finalPrice}
-                  onChange={(e) => setFinalPrice(e.target.value)}
-                  style={inputStyle}
-                />
-                <button
-                  type="submit"
-                  disabled={busyAction === outcomeMode}
-                  style={primaryButtonStyle}
-                >
-                  {busyAction === outcomeMode
-                    ? "Saving…"
-                    : outcomeMode === "complete"
-                      ? "Confirm completed"
-                      : "Confirm failed"}
-                </button>
-              </form>
-            )}
-          </>
-        )}
-        {isTerminal && (
-          <div style={{ marginTop: "0.4rem", color: "#9e9e9e" }}>
-            {response.actualQuantity !== null && (
-              <p style={{ margin: "0.2rem 0" }}>
-                Actual quantity: <strong>{response.actualQuantity}</strong>
-              </p>
-            )}
-            {response.finalPrice !== null && (
-              <p style={{ margin: "0.2rem 0" }}>
-                Final price: <strong>{response.finalPrice}</strong>
-              </p>
-            )}
-            {response.failureReason && (
-              <p style={{ margin: "0.2rem 0" }}>
-                Reason: {response.failureReason}
-              </p>
-            )}
           </div>
-        )}
+
+          {!isTerminal && (
+            <>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() =>
+                    setOutcomeMode(
+                      outcomeMode === "complete" ? "none" : "complete",
+                    )
+                  }
+                  variant="moss"
+                  size="sm"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Mark as completed
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    setOutcomeMode(outcomeMode === "fail" ? "none" : "fail")
+                  }
+                  variant="secondary"
+                  size="sm"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Mark as failed
+                </Button>
+                <Button
+                  type="button"
+                  onClick={cancel}
+                  disabled={busyAction === "cancel"}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {busyAction === "cancel" ? "Cancelling…" : "Cancel match"}
+                </Button>
+              </div>
+
+              {outcomeMode !== "none" && (
+                <form
+                  onSubmit={(e) => submitOutcome(outcomeMode, e)}
+                  aria-label={
+                    outcomeMode === "complete"
+                      ? "Complete match"
+                      : "Report failure"
+                  }
+                  className={cn(
+                    "mt-4 rounded-md border p-4",
+                    outcomeMode === "complete"
+                      ? "border-moss/30 bg-moss-soft/60"
+                      : "border-signal-warn/30 bg-signal-warn/5",
+                  )}
+                >
+                  <h3
+                    className={cn(
+                      "mb-3 flex items-center gap-2 font-serif text-lg tracking-tight",
+                      outcomeMode === "complete"
+                        ? "text-moss"
+                        : "text-signal-warn",
+                    )}
+                  >
+                    {outcomeMode === "complete" ? (
+                      <Sparkles className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    {outcomeMode === "complete"
+                      ? "Pickup complete"
+                      : "Pickup failed"}
+                  </h3>
+                  <div className="grid gap-3">
+                    {outcomeMode === "fail" && (
+                      <div>
+                        <Label htmlFor="failureReason">
+                          What went wrong? (optional)
+                        </Label>
+                        <Textarea
+                          id="failureReason"
+                          maxLength={500}
+                          value={failureReason}
+                          onChange={(e) => setFailureReason(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="actualQuantity">
+                          Actual quantity (optional)
+                        </Label>
+                        <Input
+                          id="actualQuantity"
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={actualQuantity}
+                          onChange={(e) => setActualQuantity(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="finalPrice">
+                          Final price (optional)
+                        </Label>
+                        <Input
+                          id="finalPrice"
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={finalPrice}
+                          onChange={(e) => setFinalPrice(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      type="submit"
+                      disabled={busyAction === outcomeMode}
+                      variant="primary"
+                      size="sm"
+                    >
+                      {busyAction === outcomeMode
+                        ? "Saving…"
+                        : outcomeMode === "complete"
+                          ? "Confirm completed"
+                          : "Confirm failed"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+
+          {isTerminal && (
+            <div className="mt-3 space-y-1 text-sm text-ash">
+              {response.actualQuantity !== null && (
+                <p>
+                  Actual quantity:{" "}
+                  <strong className="font-mono text-ink">
+                    {response.actualQuantity}
+                  </strong>
+                </p>
+              )}
+              {response.finalPrice !== null && (
+                <p>
+                  Final price:{" "}
+                  <strong className="font-mono text-ink">
+                    {response.finalPrice}
+                  </strong>
+                </p>
+              )}
+              {response.failureReason && (
+                <p>Reason: {response.failureReason}</p>
+              )}
+            </div>
+          )}
+        </Card>
       </section>
 
-      <section aria-label="Chat" style={{ marginTop: "1rem" }}>
-        <h2 style={{ fontSize: "1.05rem", margin: "0 0 0.4rem" }}>Chat</h2>
-        <ul ref={listRef} style={chatListStyle}>
-          {messages.length === 0 ? (
-            <li style={{ color: "#9e9e9e" }}>No messages yet.</li>
-          ) : (
-            messages.map((m) => (
-              <li
-                key={m.id}
-                style={{
-                  ...bubbleStyle,
-                  alignSelf:
-                    m.senderId === currentUserId ? "flex-end" : "flex-start",
-                  background:
-                    m.senderId === currentUserId ? "#2e7d32" : "#333",
-                }}
-              >
-                {m.body}
-              </li>
-            ))
-          )}
-        </ul>
-        {isTerminal ? (
-          <p style={{ color: "#9e9e9e" }}>
-            This match is {response.status.toLowerCase()}; no new messages
-            can be sent.
-          </p>
-        ) : (
-          <form
-            onSubmit={sendMessage}
-            style={{ display: "flex", gap: "0.5rem" }}
+      <section aria-label="Chat" role="region">
+        <Card className="p-5">
+          <h2 className="mb-3 flex items-center gap-2 font-serif text-xl tracking-tight">
+            <MessageCircle className="h-4 w-4 text-ash" /> Chat
+          </h2>
+          <ul
+            ref={listRef}
+            className="mb-3 flex max-h-80 flex-col gap-2 overflow-y-auto rounded-md border border-dune/60 bg-sand/40 p-3"
           >
-            <input
-              aria-label="Message"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Type a message"
-              style={{ ...inputStyle, flex: 1 }}
-            />
-            <button
-              type="submit"
-              disabled={posting || draft.trim() === ""}
-              style={primaryButtonStyle}
-            >
-              {posting ? "Sending…" : "Send"}
-            </button>
-          </form>
-        )}
+            {messages.length === 0 ? (
+              <li className="text-sm text-ash">No messages yet.</li>
+            ) : (
+              messages.map((m) => {
+                const mine = m.senderId === currentUserId;
+                return (
+                  <li
+                    key={m.id}
+                    className={cn(
+                      "max-w-[80%] rounded-lg px-3 py-2 text-[15px] leading-snug",
+                      mine
+                        ? "self-end bg-rust text-paper"
+                        : "self-start border border-dune bg-paper text-ink",
+                    )}
+                  >
+                    {m.body}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+          {isTerminal ? (
+            <p className="text-sm text-ash">
+              This match is {response.status.toLowerCase()}; no new messages
+              can be sent.
+            </p>
+          ) : (
+            <form onSubmit={sendMessage} className="flex gap-2">
+              <Input
+                aria-label="Message"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Type a message"
+                className="flex-1"
+              />
+              <Button
+                type="submit"
+                disabled={posting || draft.trim() === ""}
+                variant="primary"
+              >
+                <Send className="h-4 w-4" />
+                {posting ? "Sending…" : "Send"}
+              </Button>
+            </form>
+          )}
+        </Card>
       </section>
     </div>
   );
 }
-
-const boxStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.8rem 1rem",
-  margin: "1rem 0",
-};
-
-const chatListStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  listStyle: "none",
-  gap: "0.4rem",
-  maxHeight: 300,
-  overflowY: "auto",
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem",
-  margin: "0 0 0.6rem",
-};
-
-const bubbleStyle: React.CSSProperties = {
-  color: "#fff",
-  padding: "0.4rem 0.7rem",
-  borderRadius: 12,
-  maxWidth: "80%",
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: "0.55rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.95rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};
-
-const outcomeFormStyle: React.CSSProperties = {
-  marginTop: "0.8rem",
-  padding: "0.6rem 0.8rem",
-  border: "1px solid #333",
-  borderRadius: 8,
-  background: "rgba(255,255,255,0.02)",
-};

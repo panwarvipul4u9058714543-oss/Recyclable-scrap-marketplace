@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   MATERIAL_LABELS,
   type MaterialCategory,
@@ -41,85 +45,57 @@ export function BulkRequirementList({
   }
 
   return (
-    <ul style={{ listStyle: "none", padding: 0 }}>
+    <ul className="grid gap-3">
       {requirements.map((r) => (
-        <li key={r.id} style={cardStyle}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: "1rem",
-              alignItems: "baseline",
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: "1rem" }}>
-              {MATERIAL_LABELS[r.material]}
-            </h3>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                textTransform: "uppercase",
-                color: r.status === "ACTIVE" ? "#81c784" : "#9e9e9e",
-              }}
-            >
-              {r.status}
-            </span>
-          </div>
-          <p style={metaStyle}>
-            At least {r.minQuantity} {QUANTITY_UNIT_LABELS[r.minQuantityUnit]}{" "}
-            · {r.region}
-            {r.deadlineAt && (
-              <>
-                {" "}
-                · by{" "}
-                <time dateTime={r.deadlineAt}>
-                  {new Date(r.deadlineAt).toLocaleDateString()}
-                </time>
-              </>
-            )}
-          </p>
-          {r.qualityNotes && (
-            <p style={{ margin: "0.4rem 0 0", fontSize: "0.9rem" }}>
-              {r.qualityNotes}
-            </p>
-          )}
-          {r.status === "ACTIVE" && (
-            <div style={{ marginTop: "0.6rem" }}>
-              <button
-                type="button"
-                onClick={() => close(r.id)}
-                disabled={closing[r.id]}
-                style={secondaryButtonStyle}
-              >
-                {closing[r.id] ? "Closing…" : "Close requirement"}
-              </button>
+        <li key={r.id}>
+          <Card className="p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h3 className="font-serif text-xl tracking-tight text-ink">
+                {MATERIAL_LABELS[r.material]}
+              </h3>
+              <Badge tone={r.status === "ACTIVE" ? "moss" : "neutral"}>
+                {r.status}
+              </Badge>
             </div>
-          )}
+            <p className="mt-2 text-sm text-ash">
+              At least{" "}
+              <span className="text-ink">
+                {r.minQuantity} {QUANTITY_UNIT_LABELS[r.minQuantityUnit]}
+              </span>{" "}
+              · {r.region}
+              {r.deadlineAt && (
+                <>
+                  {" "}
+                  · by{" "}
+                  <time dateTime={r.deadlineAt} className="text-ink">
+                    {new Date(r.deadlineAt).toLocaleDateString()}
+                  </time>
+                </>
+              )}
+            </p>
+            {r.qualityNotes && (
+              <p className="mt-2 text-sm leading-snug text-ink/85">
+                {r.qualityNotes}
+              </p>
+            )}
+            {r.status === "ACTIVE" && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  onClick={() => close(r.id)}
+                  disabled={closing[r.id]}
+                  variant="ghost"
+                  size="sm"
+                  className="text-signal-err hover:bg-signal-err/10 hover:text-signal-err"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  {closing[r.id] ? "Closing…" : "Close requirement"}
+                </Button>
+              </div>
+            )}
+          </Card>
         </li>
       ))}
     </ul>
   );
 }
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.9rem",
-  margin: "0.4rem 0 0",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  fontSize: "0.85rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};

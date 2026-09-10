@@ -2,6 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Select } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   MATERIAL_CATEGORIES,
   MATERIAL_LABELS,
@@ -86,7 +94,6 @@ export function SavedSearchesPanel({
   }
 
   async function toggleAlerts(id: string, next: boolean) {
-    // Optimistic — flip locally, revert if the server rejects.
     setSearches((prev) =>
       prev.map((s) => (s.id === id ? { ...s, alertsEnabled: next } : s)),
     );
@@ -103,7 +110,11 @@ export function SavedSearchesPanel({
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete this saved search? Alerts you already received will stay.")) {
+    if (
+      !confirm(
+        "Delete this saved search? Alerts you already received will stay.",
+      )
+    ) {
       return;
     }
     setSearches((prev) => prev.filter((s) => s.id !== id));
@@ -112,139 +123,161 @@ export function SavedSearchesPanel({
   }
 
   return (
-    <section aria-label="Saved searches" style={{ margin: "1.5rem 0" }}>
-      <h2 style={{ fontSize: "1.05rem" }}>Saved searches & alerts</h2>
-      <p style={{ color: "#9e9e9e", fontSize: "0.9rem", marginTop: 0 }}>
-        Save a supply query and receive an alert whenever a new listing
-        matches. Toggle alerts off to pause a search without deleting it.
-      </p>
-
-      <button
-        type="button"
-        onClick={() => setShowForm((v) => !v)}
-        style={secondaryButtonStyle}
-      >
-        {showForm ? "Cancel" : "+ New saved search"}
-      </button>
+    <section aria-label="Saved searches" className="space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-2xl tracking-tight">
+            Saved searches &amp; alerts
+          </h2>
+          <p className="mt-1 text-sm text-ash">
+            Save a supply query and receive an alert whenever a new listing
+            matches. Toggle alerts off to pause a search without deleting it.
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          variant={showForm ? "ghost" : "secondary"}
+          size="sm"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {showForm ? "Cancel" : "+ New saved search"}
+        </Button>
+      </div>
 
       {showForm && (
-        <form onSubmit={create} style={formStyle}>
-          {error && (
-            <p role="alert" style={{ color: "#ff8a80" }}>
-              {error}
-            </p>
-          )}
-          <label htmlFor="ss-name">Name</label>
-          <input
-            id="ss-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={80}
-            style={inputStyle}
-          />
-          <label htmlFor="ss-material">Material (optional)</label>
-          <select
-            id="ss-material"
-            value={material}
-            onChange={(e) => setMaterial(e.target.value as MaterialCategory | "")}
-            style={inputStyle}
-          >
-            <option value="">Any</option>
-            {MATERIAL_CATEGORIES.map((m) => (
-              <option key={m} value={m}>
-                {MATERIAL_LABELS[m]}
-              </option>
-            ))}
-          </select>
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="ss-min-qty">Min supplier quantity (optional)</label>
-              <input
-                id="ss-min-qty"
-                type="number"
-                min="0"
-                step="any"
-                value={supplyQty}
-                onChange={(e) => setSupplyQty(e.target.value)}
-                style={inputStyle}
+        <Card className="p-5 sm:p-6">
+          <form onSubmit={create} className="grid gap-4">
+            {error ? <InlineNote tone="err">{error}</InlineNote> : null}
+            <div>
+              <Label htmlFor="ss-name">Name</Label>
+              <Input
+                id="ss-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={80}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="ss-min-unit">Unit</label>
-              <select
-                id="ss-min-unit"
-                value={supplyUnit}
-                onChange={(e) => setSupplyUnit(e.target.value as QuantityUnit)}
-                style={inputStyle}
+            <div>
+              <Label htmlFor="ss-material">Material (optional)</Label>
+              <Select
+                id="ss-material"
+                value={material}
+                onChange={(e) =>
+                  setMaterial(e.target.value as MaterialCategory | "")
+                }
+                className="max-w-xs"
               >
-                {QUANTITY_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {QUANTITY_UNIT_LABELS[u]}
+                <option value="">Any</option>
+                {MATERIAL_CATEGORIES.map((m) => (
+                  <option key={m} value={m}>
+                    {MATERIAL_LABELS[m]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
-          </div>
-          <label htmlFor="ss-region">Region contains (optional)</label>
-          <input
-            id="ss-region"
-            type="text"
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            placeholder="e.g. Bengaluru"
-            maxLength={120}
-            style={inputStyle}
-          />
-          <button type="submit" disabled={busy} style={primaryButtonStyle}>
-            {busy ? "Saving…" : "Save search"}
-          </button>
-        </form>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="ss-min-qty">
+                  Min supplier quantity (optional)
+                </Label>
+                <Input
+                  id="ss-min-qty"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={supplyQty}
+                  onChange={(e) => setSupplyQty(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ss-min-unit">Unit</Label>
+                <Select
+                  id="ss-min-unit"
+                  value={supplyUnit}
+                  onChange={(e) => setSupplyUnit(e.target.value as QuantityUnit)}
+                >
+                  {QUANTITY_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {QUANTITY_UNIT_LABELS[u]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="ss-region">Region contains (optional)</Label>
+              <Input
+                id="ss-region"
+                type="text"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                placeholder="e.g. Bengaluru"
+                maxLength={120}
+              />
+            </div>
+            <div>
+              <Button type="submit" disabled={busy} variant="primary">
+                <Save className="h-4 w-4" />
+                {busy ? "Saving…" : "Save search"}
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
 
       {searches.length === 0 ? (
-        <p style={{ color: "#9e9e9e" }}>
+        <Card className="border-dashed p-5 text-sm text-ash">
           You haven&apos;t saved any searches yet.
-        </p>
+        </Card>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        <ul className="grid gap-3">
           {searches.map((s) => (
-            <li key={s.id} style={cardStyle}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "1rem",
-                  alignItems: "baseline",
-                }}
-              >
-                <strong>{s.name}</strong>
-                <label style={{ fontSize: "0.85rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={s.alertsEnabled}
-                    onChange={(e) => toggleAlerts(s.id, e.target.checked)}
-                    style={{ marginRight: "0.35rem" }}
-                  />
-                  Alerts on
-                </label>
-              </div>
-              <p style={metaStyle}>
-                {s.material ? MATERIAL_LABELS[s.material] : "Any material"} ·{" "}
-                {s.supplyMinQuantity && s.supplyMinQuantityUnit
-                  ? `≥ ${s.supplyMinQuantity} ${QUANTITY_UNIT_LABELS[s.supplyMinQuantityUnit]}`
-                  : "Any quantity"}
-                {s.region && <> · region contains {s.region}</>}
-              </p>
-              <div style={{ marginTop: "0.5rem" }}>
-                <button
-                  type="button"
-                  onClick={() => remove(s.id)}
-                  style={secondaryButtonStyle}
-                >
-                  Delete
-                </button>
-              </div>
+            <li key={s.id}>
+              <Card className="p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <strong className="font-serif text-lg tracking-tight text-ink">
+                    {s.name}
+                  </strong>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                    <Checkbox
+                      checked={s.alertsEnabled}
+                      onChange={(e) => toggleAlerts(s.id, e.target.checked)}
+                    />
+                    <span>Alerts on</span>
+                  </label>
+                </div>
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ash">
+                  <Badge tone={s.material ? "moss" : "neutral"}>
+                    {s.material ? MATERIAL_LABELS[s.material] : "Any material"}
+                  </Badge>
+                  <span>·</span>
+                  <span>
+                    {s.supplyMinQuantity && s.supplyMinQuantityUnit
+                      ? `≥ ${s.supplyMinQuantity} ${QUANTITY_UNIT_LABELS[s.supplyMinQuantityUnit]}`
+                      : "Any quantity"}
+                  </span>
+                  {s.region && (
+                    <>
+                      <span>·</span>
+                      <span>region contains {s.region}</span>
+                    </>
+                  )}
+                </p>
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    onClick={() => remove(s.id)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-signal-err hover:bg-signal-err/10 hover:text-signal-err"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </div>
+              </Card>
             </li>
           ))}
         </ul>
@@ -252,57 +285,3 @@ export function SavedSearchesPanel({
     </section>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.95rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.9rem",
-  margin: "0.4rem 0 0",
-};
-
-const formStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-  background: "rgba(255,255,255,0.02)",
-};

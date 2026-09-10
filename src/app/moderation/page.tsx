@@ -1,4 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { Shield } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   listOpenReportsWithContext,
@@ -7,11 +10,6 @@ import {
 import { ReportRow } from "./ReportRow";
 import { SuspendedRow } from "./SuspendedRow";
 
-/**
- * Operator moderation queue. Only accounts with the `isAdmin` flag can
- * reach this page; anyone else gets a 404 so we never confirm the surface
- * exists.
- */
 export default async function ModerationPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
@@ -23,21 +21,29 @@ export default async function ModerationPage() {
   ]);
 
   return (
-    <main>
-      <h1>Moderation queue</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        Review open reports and suspend accounts for repeated no-shows,
-        harassment, fraud or unsafe behaviour.
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <PageHeader
+        eyebrow="Admin"
+        title="Moderation queue"
+        description={
+          <span className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-rust" />
+            Review open reports and suspend accounts for repeated no-shows,
+            harassment, fraud or unsafe behaviour.
+          </span>
+        }
+      />
 
-      <section aria-label="Open reports" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>
+      <section aria-label="Open reports" className="space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">
           Open reports ({reports.length})
         </h2>
         {reports.length === 0 ? (
-          <p>No open reports.</p>
+          <Card className="border-dashed p-5 text-sm text-ash">
+            No open reports.
+          </Card>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
+          <ul className="grid gap-3">
             {reports.map((r) => (
               <li key={r.id}>
                 <ReportRow
@@ -58,14 +64,18 @@ export default async function ModerationPage() {
         )}
       </section>
 
-      <section aria-label="Suspended accounts" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>
+      <div className="rule my-10" />
+
+      <section aria-label="Suspended accounts" className="space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">
           Suspended accounts ({suspended.length})
         </h2>
         {suspended.length === 0 ? (
-          <p>No suspended accounts.</p>
+          <Card className="border-dashed p-5 text-sm text-ash">
+            No suspended accounts.
+          </Card>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
+          <ul className="grid gap-3">
             {suspended.map((s) => (
               <li key={s.id}>
                 <SuspendedRow

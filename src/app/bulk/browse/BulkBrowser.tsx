@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowUpRight, BadgeCheck, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Select } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   MATERIAL_CATEGORIES,
   MATERIAL_LABELS,
@@ -50,41 +57,25 @@ export function BulkBrowser() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchResults(
-    e?: React.FormEvent,
-    filters?: {
-      material?: MaterialCategory | "";
-      supplyQuantity?: string;
-      supplyQuantityUnit?: QuantityUnit;
-      region?: string;
-      buyerRole?: Role | "";
-    },
-  ) {
+  async function fetchResults(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    const eff = {
-      material: filters?.material ?? material,
-      supplyQuantity: filters?.supplyQuantity ?? supplyQuantity,
-      supplyQuantityUnit: filters?.supplyQuantityUnit ?? supplyQuantityUnit,
-      region: filters?.region ?? region,
-      buyerRole: filters?.buyerRole ?? buyerRole,
-    };
     setError(null);
     setBusy(true);
     try {
       const params = new URLSearchParams({ scope: "browse" });
-      if (eff.material) params.set("material", eff.material);
-      if (eff.supplyQuantity.trim() !== "") {
-        const n = Number(eff.supplyQuantity);
+      if (material) params.set("material", material);
+      if (supplyQuantity.trim() !== "") {
+        const n = Number(supplyQuantity);
         if (!Number.isFinite(n) || n <= 0) {
           setError("Supply quantity must be a positive number.");
           setBusy(false);
           return;
         }
         params.set("supplyQuantity", String(n));
-        params.set("supplyQuantityUnit", eff.supplyQuantityUnit);
+        params.set("supplyQuantityUnit", supplyQuantityUnit);
       }
-      if (eff.region.trim() !== "") params.set("region", eff.region.trim());
-      if (eff.buyerRole) params.set("buyerRole", eff.buyerRole);
+      if (region.trim() !== "") params.set("region", region.trim());
+      if (buyerRole) params.set("buyerRole", buyerRole);
 
       const res = await fetch(`/api/bulk-requirements?${params.toString()}`);
       if (!res.ok) {
@@ -100,256 +91,219 @@ export function BulkBrowser() {
     }
   }
 
-  // Initial load — an empty search returns all open requirements.
   useEffect(() => {
     void fetchResults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div>
-      <form onSubmit={(e) => fetchResults(e)}>
-        {error && (
-          <p role="alert" style={{ color: "#ff8a80" }}>
-            {error}
-          </p>
-        )}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "0.6rem",
-          }}
-        >
-          <div>
-            <label htmlFor="browse-material">Material</label>
-            <select
-              id="browse-material"
-              value={material}
-              onChange={(e) =>
-                setMaterial(e.target.value as MaterialCategory | "")
-              }
-              style={inputStyle}
-            >
-              <option value="">Any</option>
-              {MATERIAL_CATEGORIES.map((m) => (
-                <option key={m} value={m}>
-                  {MATERIAL_LABELS[m]}
-                </option>
-              ))}
-            </select>
+    <div className="space-y-6">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
+
+      <Card className="p-5 sm:p-6">
+        <form onSubmit={fetchResults} className="grid gap-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <Label htmlFor="browse-material">Material</Label>
+              <Select
+                id="browse-material"
+                value={material}
+                onChange={(e) =>
+                  setMaterial(e.target.value as MaterialCategory | "")
+                }
+              >
+                <option value="">Any</option>
+                {MATERIAL_CATEGORIES.map((m) => (
+                  <option key={m} value={m}>
+                    {MATERIAL_LABELS[m]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="browse-buyer-role">Buyer type</Label>
+              <Select
+                id="browse-buyer-role"
+                value={buyerRole}
+                onChange={(e) => setBuyerRole(e.target.value as Role | "")}
+              >
+                <option value="">Any</option>
+                {BULK_BUYER_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="browse-region">Region contains</Label>
+              <Input
+                id="browse-region"
+                type="text"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                placeholder="e.g. Bengaluru"
+              />
+            </div>
+            <div>
+              <Label htmlFor="browse-supply-qty">I can supply</Label>
+              <Input
+                id="browse-supply-qty"
+                type="number"
+                min="0"
+                step="any"
+                value={supplyQuantity}
+                onChange={(e) => setSupplyQuantity(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="browse-supply-unit">Unit</Label>
+              <Select
+                id="browse-supply-unit"
+                value={supplyQuantityUnit}
+                onChange={(e) =>
+                  setSupplyQuantityUnit(e.target.value as QuantityUnit)
+                }
+              >
+                {QUANTITY_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {QUANTITY_UNIT_LABELS[u]}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
           <div>
-            <label htmlFor="browse-buyer-role">Buyer type</label>
-            <select
-              id="browse-buyer-role"
-              value={buyerRole}
-              onChange={(e) => setBuyerRole(e.target.value as Role | "")}
-              style={inputStyle}
-            >
-              <option value="">Any</option>
-              {BULK_BUYER_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
+            <Button type="submit" disabled={busy} variant="primary" size="lg">
+              <Search className="h-4 w-4" />
+              {busy ? "Searching…" : "Search"}
+            </Button>
           </div>
-          <div>
-            <label htmlFor="browse-region">Region contains</label>
-            <input
-              id="browse-region"
-              type="text"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="e.g. Bengaluru"
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label htmlFor="browse-supply-qty">I can supply</label>
-            <input
-              id="browse-supply-qty"
-              type="number"
-              min="0"
-              step="any"
-              value={supplyQuantity}
-              onChange={(e) => setSupplyQuantity(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label htmlFor="browse-supply-unit">Unit</label>
-            <select
-              id="browse-supply-unit"
-              value={supplyQuantityUnit}
-              onChange={(e) =>
-                setSupplyQuantityUnit(e.target.value as QuantityUnit)
-              }
-              style={inputStyle}
-            >
-              {QUANTITY_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {QUANTITY_UNIT_LABELS[u]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <button type="submit" disabled={busy} style={primaryButtonStyle}>
-          {busy ? "Searching…" : "Search"}
-        </button>
-      </form>
+        </form>
+      </Card>
 
       {results !== null && (
-        <section
-          aria-label="Bulk requirements"
-          style={{ marginTop: "1.5rem" }}
-        >
-          <h2 style={{ fontSize: "1.1rem" }}>
-            {results.length === 0
-              ? "No requirements match your filters."
-              : `${results.length} bulk requirement${results.length === 1 ? "" : "s"}`}
-          </h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {results.map((r) => (
-              <li key={r.id} style={cardStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "1rem",
-                    alignItems: "baseline",
-                  }}
-                >
-                  <h3 style={{ margin: 0, fontSize: "1rem" }}>
-                    {MATERIAL_LABELS[r.material]}
-                  </h3>
-                  <span style={{ fontSize: "0.85rem", color: "#81c784" }}>
-                    Wants ≥ {r.minQuantity}{" "}
-                    {QUANTITY_UNIT_LABELS[r.minQuantityUnit]}
-                  </span>
-                </div>
-                <p style={metaStyle}>
-                  {r.region}
-                  {r.deadlineAt && (
-                    <>
-                      {" "}
-                      · deadline{" "}
-                      <time dateTime={r.deadlineAt}>
-                        {new Date(r.deadlineAt).toLocaleDateString()}
-                      </time>
-                    </>
-                  )}
-                </p>
-                {r.qualityNotes && (
-                  <p style={{ margin: "0.4rem 0 0", fontSize: "0.9rem" }}>
-                    {r.qualityNotes}
-                  </p>
-                )}
-                <p style={{ margin: "0.6rem 0 0" }}>
-                  <Link
-                    href={`/bulk/${r.id}`}
-                    style={{ fontSize: "0.9rem" }}
-                  >
-                    Open requirement → respond
-                  </Link>
-                </p>
-                <div style={buyerBadgeStyle}>
-                  <div>
-                    <strong>
-                      {r.buyer.organisationName ??
-                        r.buyer.displayName ??
-                        "Buyer"}
-                    </strong>{" "}
-                    <span style={{ color: "#9e9e9e", fontSize: "0.85rem" }}>
-                      ·{" "}
-                      {r.buyer.roles
-                        .filter((role) =>
-                          (BULK_BUYER_ROLES as readonly Role[]).includes(role),
-                        )
-                        .map((role) => ROLE_LABELS[role])
-                        .join(", ") || "Buyer"}
-                    </span>
-                  </div>
-                  {r.buyer.registrationId && (
-                    <div style={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-                      Registration:{" "}
-                      <code>{r.buyer.registrationId}</code>
+        <section aria-label="Bulk requirements" className="space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-2xl tracking-tight">
+              {results.length === 0
+                ? "No requirements match your filters."
+                : `${results.length} bulk requirement${results.length === 1 ? "" : "s"}`}
+            </h2>
+            {results.length > 0 ? (
+              <p className="font-mono text-xs text-ash">
+                {results.length.toString().padStart(2, "0")} listed
+              </p>
+            ) : null}
+          </div>
+          {results.length === 0 ? (
+            <Card className="border-dashed p-5 text-sm text-ash">
+              Widen the region or clear a material filter and search again.
+            </Card>
+          ) : (
+            <ul className="grid gap-3">
+              {results.map((r) => (
+                <li key={r.id}>
+                  <Card className="p-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-3">
+                      <h3 className="font-serif text-xl tracking-tight text-ink">
+                        {MATERIAL_LABELS[r.material]}
+                      </h3>
+                      <span className="inline-flex items-center gap-1 font-mono text-sm text-moss">
+                        Wants ≥ {r.minQuantity}{" "}
+                        {QUANTITY_UNIT_LABELS[r.minQuantityUnit]}
+                      </span>
                     </div>
-                  )}
-                  <div style={{ fontSize: "0.85rem", color: "#9e9e9e" }}>
-                    Completed as buyer:{" "}
-                    {r.buyer.reputation.completedAsCollector} · Failed:{" "}
-                    {r.buyer.reputation.failed}
-                    {r.buyer.reputation.rating.count > 0 && (
-                      <>
-                        {" "}
-                        · Rating{" "}
-                        {r.buyer.reputation.rating.average?.toFixed(1)} (
-                        {r.buyer.reputation.rating.count})
-                      </>
+                    <p className="mt-2 text-sm text-ash">
+                      {r.region}
+                      {r.deadlineAt && (
+                        <>
+                          {" "}
+                          · deadline{" "}
+                          <time dateTime={r.deadlineAt} className="text-ink">
+                            {new Date(r.deadlineAt).toLocaleDateString()}
+                          </time>
+                        </>
+                      )}
+                    </p>
+                    {r.qualityNotes && (
+                      <p className="mt-2 text-sm leading-snug text-ink/85">
+                        {r.qualityNotes}
+                      </p>
                     )}
-                  </div>
-                  <Link
-                    href={`/u/${r.buyer.id}`}
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    View buyer profile
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
+
+                    <div className="mt-4 rounded-md border border-dune bg-sand/50 p-3">
+                      <div className="flex items-center gap-2">
+                        <BadgeCheck className="h-4 w-4 text-moss" />
+                        <strong className="font-medium text-ink">
+                          {r.buyer.organisationName ??
+                            r.buyer.displayName ??
+                            "Buyer"}
+                        </strong>
+                        <span className="text-xs text-ash">
+                          ·{" "}
+                          {r.buyer.roles
+                            .filter((role) =>
+                              (BULK_BUYER_ROLES as readonly Role[]).includes(
+                                role,
+                              ),
+                            )
+                            .map((role) => ROLE_LABELS[role])
+                            .join(", ") || "Buyer"}
+                        </span>
+                      </div>
+                      {r.buyer.registrationId && (
+                        <p className="mt-1 text-xs text-ash">
+                          Registration:{" "}
+                          <code className="font-mono text-ink">
+                            {r.buyer.registrationId}
+                          </code>
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-ash">
+                        Completed as buyer:{" "}
+                        <span className="font-mono text-ink">
+                          {r.buyer.reputation.completedAsCollector}
+                        </span>{" "}
+                        · Failed:{" "}
+                        <span className="font-mono text-ink">
+                          {r.buyer.reputation.failed}
+                        </span>
+                        {r.buyer.reputation.rating.count > 0 && (
+                          <>
+                            {" "}
+                            · Rating{" "}
+                            <span className="font-mono text-ink">
+                              {r.buyer.reputation.rating.average?.toFixed(1)}
+                            </span>{" "}
+                            ({r.buyer.reputation.rating.count})
+                          </>
+                        )}
+                      </p>
+                      <Link
+                        href={`/u/${r.buyer.id}`}
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-rust underline-offset-4 hover:underline"
+                      >
+                        View buyer profile
+                      </Link>
+                    </div>
+
+                    <div className="mt-4">
+                      <Link
+                        href={`/bulk/${r.id}`}
+                        className="focus-ring inline-flex items-center gap-1 rounded-sm text-sm text-rust hover:underline"
+                      >
+                        Open requirement → respond
+                        <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.6rem 1.2rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.9rem",
-  margin: "0.4rem 0 0",
-};
-
-const buyerBadgeStyle: React.CSSProperties = {
-  marginTop: "0.7rem",
-  padding: "0.6rem 0.8rem",
-  borderRadius: 6,
-  background: "#141821",
-  border: "1px solid #2a2f3a",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.3rem",
-};

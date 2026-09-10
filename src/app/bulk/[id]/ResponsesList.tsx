@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
 import { QUANTITY_UNIT_LABELS, type QuantityUnit } from "@/lib/materials";
 
 interface ResponseRow {
@@ -20,11 +25,16 @@ interface ResponseRow {
   createdAt: string;
 }
 
-export function ResponsesList({
-  responses,
-}: {
-  responses: ResponseRow[];
-}) {
+const STATUS_TONE: Record<ResponseRow["status"], "moss" | "warn" | "neutral"> = {
+  PENDING: "warn",
+  SELECTED: "moss",
+  COMPLETED: "moss",
+  FAILED: "warn",
+  CANCELLED: "neutral",
+  WITHDRAWN: "neutral",
+};
+
+export function ResponsesList({ responses }: { responses: ResponseRow[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
@@ -52,98 +62,55 @@ export function ResponsesList({
   }
 
   return (
-    <>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
-      <ul style={{ listStyle: "none", padding: 0 }}>
+    <div className="space-y-3">
+      {error ? <InlineNote tone="err">{error}</InlineNote> : null}
+      <ul className="grid gap-3">
         {responses.map((r) => (
-          <li key={r.id} style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "1rem",
-                alignItems: "baseline",
-              }}
-            >
-              <strong>
-                Offers {r.offeredQuantity}{" "}
-                {QUANTITY_UNIT_LABELS[r.offeredQuantityUnit]}
-              </strong>
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  textTransform: "uppercase",
-                  color:
-                    r.status === "SELECTED"
-                      ? "#81c784"
-                      : r.status === "PENDING"
-                        ? "#ffcc80"
-                        : "#9e9e9e",
-                }}
-              >
-                {r.status}
-              </span>
-            </div>
-            {r.notes && (
-              <p style={{ margin: "0.4rem 0 0", fontSize: "0.9rem" }}>
-                {r.notes}
-              </p>
-            )}
-            <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.6rem" }}>
-              {r.status === "PENDING" && !hasSelected && (
-                <button
-                  type="button"
-                  onClick={() => select(r.id)}
-                  disabled={busy[r.id]}
-                  style={primaryButtonStyle}
-                >
-                  {busy[r.id] ? "Selecting…" : "Select this supplier"}
-                </button>
+          <li key={r.id}>
+            <Card className="p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <strong className="font-serif text-lg tracking-tight text-ink">
+                  Offers {r.offeredQuantity}{" "}
+                  {QUANTITY_UNIT_LABELS[r.offeredQuantityUnit]}
+                </strong>
+                <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
+              </div>
+              {r.notes && (
+                <p className="mt-2 text-sm leading-snug text-ink/85">
+                  {r.notes}
+                </p>
               )}
-              {(r.status === "SELECTED" ||
-                r.status === "COMPLETED" ||
-                r.status === "FAILED" ||
-                r.status === "CANCELLED") && (
-                <Link href={`/bulk/responses/${r.id}`} style={secondaryLinkStyle}>
-                  Open response
-                </Link>
-              )}
-            </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {r.status === "PENDING" && !hasSelected && (
+                  <Button
+                    type="button"
+                    onClick={() => select(r.id)}
+                    disabled={busy[r.id]}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {busy[r.id] ? "Selecting…" : "Select this supplier"}
+                  </Button>
+                )}
+                {(r.status === "SELECTED" ||
+                  r.status === "COMPLETED" ||
+                  r.status === "FAILED" ||
+                  r.status === "CANCELLED") && (
+                  <Link
+                    href={`/bulk/responses/${r.id}`}
+                    className="focus-ring inline-flex"
+                  >
+                    <Button type="button" variant="secondary" size="sm">
+                      Open response
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </Card>
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryLinkStyle: React.CSSProperties = {
-  display: "inline-block",
-  padding: "0.4rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  textDecoration: "none",
-};

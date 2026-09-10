@@ -2,6 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Select, Textarea } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   MATERIAL_CATEGORIES,
   MATERIAL_LABELS,
@@ -11,8 +17,6 @@ import {
   type QuantityUnit,
 } from "@/lib/materials";
 
-// Local-time YYYY-MM-DDTHH:MM value for a datetime-local default. Uses the
-// viewer's time zone so "in two weeks" reads correctly for them.
 function toLocalInputValue(d: Date): string {
   const tz = d.getTimezoneOffset() * 60_000;
   return new Date(d.getTime() - tz).toISOString().slice(0, 16);
@@ -91,125 +95,102 @@ export function BulkRequirementForm() {
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
-      <label htmlFor="bulk-material">Material</label>
-      <select
-        id="bulk-material"
-        value={material}
-        onChange={(e) => setMaterial(e.target.value as MaterialCategory)}
-        style={inputStyle}
-      >
-        {MATERIAL_CATEGORIES.map((m) => (
-          <option key={m} value={m}>
-            {MATERIAL_LABELS[m]}
-          </option>
-        ))}
-      </select>
+    <Card className="p-5 sm:p-6">
+      <form onSubmit={onSubmit} className="grid gap-4">
+        {error ? <InlineNote tone="err">{error}</InlineNote> : null}
 
-      <fieldset style={fieldsetStyle}>
-        <legend>Minimum quantity you need</legend>
-        <div
-          style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="bulk-min-qty">At least</label>
-            <input
-              id="bulk-min-qty"
-              type="number"
-              min="0"
-              step="any"
-              value={minQuantity}
-              onChange={(e) => setMinQuantity(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="bulk-min-qty-unit">Unit</label>
-            <select
-              id="bulk-min-qty-unit"
-              value={minQuantityUnit}
-              onChange={(e) => setMinQuantityUnit(e.target.value as QuantityUnit)}
-              style={inputStyle}
-            >
-              {QUANTITY_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {QUANTITY_UNIT_LABELS[u]}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <Label htmlFor="bulk-material">Material</Label>
+          <Select
+            id="bulk-material"
+            value={material}
+            onChange={(e) => setMaterial(e.target.value as MaterialCategory)}
+            className="max-w-xs"
+          >
+            {MATERIAL_CATEGORIES.map((m) => (
+              <option key={m} value={m}>
+                {MATERIAL_LABELS[m]}
+              </option>
+            ))}
+          </Select>
         </div>
-      </fieldset>
 
-      <label htmlFor="bulk-region">Region (service area)</label>
-      <input
-        id="bulk-region"
-        type="text"
-        value={region}
-        onChange={(e) => setRegion(e.target.value)}
-        maxLength={120}
-        placeholder="e.g. Bengaluru South"
-        style={inputStyle}
-      />
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-ink">
+            Minimum quantity you need
+          </legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="bulk-min-qty">At least</Label>
+              <Input
+                id="bulk-min-qty"
+                type="number"
+                min="0"
+                step="any"
+                value={minQuantity}
+                onChange={(e) => setMinQuantity(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="bulk-min-qty-unit">Unit</Label>
+              <Select
+                id="bulk-min-qty-unit"
+                value={minQuantityUnit}
+                onChange={(e) =>
+                  setMinQuantityUnit(e.target.value as QuantityUnit)
+                }
+              >
+                {QUANTITY_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {QUANTITY_UNIT_LABELS[u]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        </fieldset>
 
-      <label htmlFor="bulk-quality">Quality notes (optional)</label>
-      <textarea
-        id="bulk-quality"
-        value={qualityNotes}
-        onChange={(e) => setQualityNotes(e.target.value)}
-        rows={3}
-        maxLength={500}
-        placeholder="Grade, cleanliness, sorting expectations…"
-        style={{ ...inputStyle, height: "auto", fontFamily: "inherit" }}
-      />
+        <div>
+          <Label htmlFor="bulk-region">Region (service area)</Label>
+          <Input
+            id="bulk-region"
+            type="text"
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            maxLength={120}
+            placeholder="e.g. Bengaluru South"
+          />
+        </div>
 
-      <label htmlFor="bulk-deadline">Deadline (optional)</label>
-      <input
-        id="bulk-deadline"
-        type="datetime-local"
-        value={deadlineAt}
-        onChange={(e) => setDeadlineAt(e.target.value)}
-        style={inputStyle}
-      />
+        <div>
+          <Label htmlFor="bulk-quality">Quality notes (optional)</Label>
+          <Textarea
+            id="bulk-quality"
+            value={qualityNotes}
+            onChange={(e) => setQualityNotes(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Grade, cleanliness, sorting expectations…"
+          />
+        </div>
 
-      <button type="submit" disabled={busy} style={primaryButtonStyle}>
-        {busy ? "Publishing…" : "Publish requirement"}
-      </button>
-    </form>
+        <div className="max-w-xs">
+          <Label htmlFor="bulk-deadline">Deadline (optional)</Label>
+          <Input
+            id="bulk-deadline"
+            type="datetime-local"
+            value={deadlineAt}
+            onChange={(e) => setDeadlineAt(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Button type="submit" disabled={busy} variant="primary" size="lg">
+            <Send className="h-4 w-4" />
+            {busy ? "Publishing…" : "Publish requirement"}
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.6rem 1.2rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const fieldsetStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem 1rem 0",
-  margin: "0 0 1rem",
-};

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { AdPanel } from "@/app/components/AdPanel";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { BULK_SUPPLIER_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { BulkBrowser } from "./BulkBrowser";
@@ -14,32 +17,44 @@ export default async function BulkBrowsePage() {
   if (!canRespond) {
     const labels = BULK_SUPPLIER_ROLES.map((r) => ROLE_LABELS[r]).join(", ");
     return (
-      <main>
-        <p>
-          <Link href="/bulk">← Back to bulk marketplace</Link>
-        </p>
-        <h1>Browse bulk requirements</h1>
-        <p>
+      <main className="container-page py-10 sm:py-14">
+        <Link
+          href="/bulk"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to bulk marketplace
+        </Link>
+        <PageHeader eyebrow="Bulk" title="Browse bulk requirements" />
+        <Card className="p-6 text-sm text-ash">
           Only <em>{labels}</em> can respond to bulk requirements. Add one of
           those roles to browse and respond.
-        </p>
+        </Card>
       </main>
     );
   }
 
   return (
-    <main>
-      <p>
-        <Link href="/bulk">← Back to bulk marketplace</Link>
-      </p>
-      <h1>Browse bulk requirements</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        Buyer verification signals are visible on every card — organisation
-        name, registration ID and reputation — so you can gauge risk before
-        making contact.
-      </p>
-      <BulkBrowser />
-      <AdPanel surface="BULK_BROWSE" />
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/bulk"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to bulk marketplace
+      </Link>
+      <PageHeader
+        eyebrow="Bulk"
+        title="Browse bulk requirements"
+        description="Buyer verification signals are visible on every card — organisation name, registration ID and reputation — so you can gauge risk before making contact."
+      />
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <div className="min-w-0">
+          <BulkBrowser />
+        </div>
+        <aside className="lg:sticky lg:top-24">
+          <AdPanel surface="BULK_BROWSE" />
+        </aside>
+      </div>
     </main>
   );
 }

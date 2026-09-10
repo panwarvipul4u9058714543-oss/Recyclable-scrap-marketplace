@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { InlineNote } from "@/components/ui/inline-note";
 import type { PromotionTier } from "@/lib/monetisation/plans";
 
 interface PromoteListingFormProps {
@@ -55,37 +58,26 @@ export function PromoteListingForm({
 
   if (purchased) {
     return (
-      <p style={{ color: "#a5d6a7", margin: 0 }}>
-        {label} activated. It is now boosting this listing in nearby-discovery.
-      </p>
+      <InlineNote tone="ok">
+        {label} activated. It is now boosting this listing in
+        nearby-discovery.
+      </InlineNote>
     );
   }
 
   return (
-    <>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80", margin: "0 0 0.4rem" }}>
-          {error}
-        </p>
-      )}
-      <button
+    <div className="space-y-2">
+      {error && <InlineNote tone="err">{error}</InlineNote>}
+      <Button
         type="button"
         onClick={purchase}
         disabled={busy}
-        style={primaryButtonStyle}
+        variant="primary"
+        size="sm"
       >
+        <Zap className="h-3.5 w-3.5" />
         {busy ? "Purchasing…" : `Purchase ${label}`}
-      </button>
-    </>
+      </Button>
+    </div>
   );
 }
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#3949ab",
-  color: "#fff",
-  cursor: "pointer",
-};

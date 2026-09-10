@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { InlineNote } from "@/components/ui/inline-note";
 
 interface SuspendedRowProps {
   user: {
@@ -37,49 +40,34 @@ export function SuspendedRow({ user }: SuspendedRowProps) {
   }
 
   return (
-    <article aria-label="Suspended account" style={rowStyle}>
-      <p style={{ margin: 0 }}>
-        <strong>{user.phone}</strong> — suspended{" "}
+    <article
+      aria-label="Suspended account"
+      className="rounded-lg border border-dune/70 bg-paper p-5 shadow-soft"
+    >
+      <p className="text-[15px] text-ink">
+        <strong className="font-mono font-medium">{user.phone}</strong> — suspended{" "}
         {user.suspendedAt
           ? new Date(user.suspendedAt).toLocaleString()
           : "(unknown)"}
       </p>
       {user.suspensionReason && (
-        <p style={{ margin: "0.3rem 0 0" }}>
+        <p className="mt-2 text-sm text-ink/85">
           Reason: {user.suspensionReason}
         </p>
       )}
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80", margin: "0.4rem 0 0" }}>
-          {error}
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={reinstate}
-        disabled={busy}
-        style={buttonStyle}
-      >
-        {busy ? "Reinstating…" : "Reinstate"}
-      </button>
+      {error && <InlineNote tone="err" className="mt-3">{error}</InlineNote>}
+      <div className="mt-4">
+        <Button
+          type="button"
+          onClick={reinstate}
+          disabled={busy}
+          variant="secondary"
+          size="sm"
+        >
+          <RefreshCcw className="h-3.5 w-3.5" />
+          {busy ? "Reinstating…" : "Reinstate"}
+        </Button>
+      </div>
     </article>
   );
 }
-
-const rowStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const buttonStyle: React.CSSProperties = {
-  marginTop: "0.6rem",
-  padding: "0.45rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};

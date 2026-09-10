@@ -2,6 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AlertOctagon, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ReportRowProps {
   report: {
@@ -20,9 +25,7 @@ export function ReportRow({ report }: ReportRowProps) {
   const router = useRouter();
   const [note, setNote] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
-  const [busy, setBusy] = useState<
-    "" | "resolve" | "dismiss" | "suspend"
-  >("");
+  const [busy, setBusy] = useState<"" | "resolve" | "dismiss" | "suspend">("");
   const [error, setError] = useState<string | null>(null);
 
   async function decide(decision: "RESOLVED" | "DISMISSED") {
@@ -83,139 +86,91 @@ export function ReportRow({ report }: ReportRowProps) {
   }
 
   return (
-    <article aria-label="Open report" style={rowStyle}>
-      <p style={{ margin: 0 }}>
-        <strong>{report.reason}</strong> · against {report.targetLabel}
-      </p>
-      <p style={metaStyle}>
-        Reported by {report.reporterPhone} on{" "}
-        {new Date(report.createdAt).toLocaleString()}
-      </p>
-      {report.details && (
-        <p style={{ margin: "0.3rem 0 0" }}>&ldquo;{report.details}&rdquo;</p>
-      )}
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80", margin: "0.4rem 0 0" }}>
-          {error}
+    <article aria-label="Open report" className="rounded-lg border border-dune/70 bg-paper p-5 shadow-soft">
+        <p className="flex items-center gap-2 text-[15px] text-ink">
+          <strong className="font-medium">{report.reason}</strong>
+          <span className="text-ash">·</span>
+          <span>against {report.targetLabel}</span>
         </p>
-      )}
-
-      <div style={{ marginTop: "0.6rem" }}>
-        <label htmlFor={`note-${report.id}`}>Review note (optional)</label>
-        <input
-          id={`note-${report.id}`}
-          type="text"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={1000}
-          style={inputStyle}
-        />
-
-        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() => decide("RESOLVED")}
-            disabled={busy !== ""}
-            style={primaryButtonStyle}
-          >
-            {busy === "resolve" ? "Saving…" : "Mark resolved"}
-          </button>
-          <button
-            type="button"
-            onClick={() => decide("DISMISSED")}
-            disabled={busy !== ""}
-            style={secondaryButtonStyle}
-          >
-            {busy === "dismiss" ? "Saving…" : "Dismiss"}
-          </button>
-        </div>
-      </div>
-
-      {report.targetUserId && !report.targetUserSuspended && (
-        <div style={{ marginTop: "0.8rem" }}>
-          <label htmlFor={`susp-${report.id}`}>
-            Suspend the reported account (reason)
-          </label>
-          <input
-            id={`susp-${report.id}`}
-            type="text"
-            value={suspendReason}
-            onChange={(e) => setSuspendReason(e.target.value)}
-            maxLength={500}
-            placeholder="e.g. Repeated no-shows across three connections"
-            style={inputStyle}
-          />
-          <button
-            type="button"
-            onClick={suspend}
-            disabled={busy !== ""}
-            style={dangerButtonStyle}
-          >
-            {busy === "suspend" ? "Suspending…" : "Suspend account"}
-          </button>
-        </div>
-      )}
-      {report.targetUserId && report.targetUserSuspended && (
-        <p style={{ ...metaStyle, marginTop: "0.6rem" }}>
-          That account is already suspended.
+        <p className="mt-1 text-xs text-ash">
+          Reported by{" "}
+          <span className="font-mono text-ink">{report.reporterPhone}</span> on{" "}
+          {new Date(report.createdAt).toLocaleString()}
         </p>
-      )}
+        {report.details && (
+          <p className="mt-2 text-sm italic text-ink/85">
+            &ldquo;{report.details}&rdquo;
+          </p>
+        )}
+        {error && <InlineNote tone="err" className="mt-3">{error}</InlineNote>}
+
+        <div className="mt-4 space-y-3">
+          <div>
+            <Label htmlFor={`note-${report.id}`}>Review note (optional)</Label>
+            <Input
+              id={`note-${report.id}`}
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={1000}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => decide("RESOLVED")}
+              disabled={busy !== ""}
+              variant="moss"
+              size="sm"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {busy === "resolve" ? "Saving…" : "Mark resolved"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => decide("DISMISSED")}
+              disabled={busy !== ""}
+              variant="secondary"
+              size="sm"
+            >
+              <X className="h-3.5 w-3.5" />
+              {busy === "dismiss" ? "Saving…" : "Dismiss"}
+            </Button>
+          </div>
+        </div>
+
+        {report.targetUserId && !report.targetUserSuspended && (
+          <div className="mt-6 space-y-3 rounded-md border border-signal-err/30 bg-signal-err/5 p-4">
+            <Label htmlFor={`susp-${report.id}`}>
+              Suspend the reported account (reason)
+            </Label>
+            <Input
+              id={`susp-${report.id}`}
+              type="text"
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              maxLength={500}
+              placeholder="e.g. Repeated no-shows across three connections"
+            />
+            <Button
+              type="button"
+              onClick={suspend}
+              disabled={busy !== ""}
+              variant="primary"
+              size="sm"
+              className="bg-signal-err hover:bg-signal-err/90"
+            >
+              <AlertOctagon className="h-3.5 w-3.5" />
+              {busy === "suspend" ? "Suspending…" : "Suspend account"}
+            </Button>
+          </div>
+        )}
+        {report.targetUserId && report.targetUserSuspended && (
+          <p className="mt-4 text-xs text-ash">
+            That account is already suspended.
+          </p>
+        )}
     </article>
   );
 }
-
-const rowStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.8rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0.3rem 0 0",
-};
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.45rem",
-  margin: "0.35rem 0 0.6rem",
-  fontSize: "0.95rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.45rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.45rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};
-
-const dangerButtonStyle: React.CSSProperties = {
-  padding: "0.45rem 0.9rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#c62828",
-  color: "#fff",
-  cursor: "pointer",
-};

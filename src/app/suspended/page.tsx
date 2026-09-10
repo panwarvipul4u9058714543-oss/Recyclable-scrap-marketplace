@@ -1,48 +1,60 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ShieldOff } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { LogoutButton } from "@/app/dashboard/logout-button";
 
-/**
- * Landing page for a signed-in user whose account has been suspended. Every
- * write path in the app refuses their calls with a `suspended` error; this
- * page tells them why and shows the operator-provided reason.
- */
 export default async function SuspendedPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
   if (!user.suspendedAt) redirect("/dashboard");
 
   return (
-    <main>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h1>Your account is suspended</h1>
-        <LogoutButton />
-      </div>
-      <p>
-        An operator has suspended <strong>{user.phone}</strong>. Until this
-        suspension is lifted you cannot create or edit listings, express
-        interest, chat, submit ratings or file reports.
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <PageHeader
+        eyebrow="Account"
+        title="Your account is suspended"
+        description={
+          <span className="flex items-start gap-2">
+            <ShieldOff className="mt-0.5 h-4 w-4 shrink-0 text-signal-err" />
+            <span>
+              An operator has suspended{" "}
+              <strong className="font-mono font-medium">{user.phone}</strong>.
+              Until this suspension is lifted you cannot create or edit
+              listings, express interest, chat, submit ratings or file reports.
+            </span>
+          </span>
+        }
+      />
+
       {user.suspensionReason && (
-        <p>
-          <strong>Reason given:</strong> {user.suspensionReason}
-        </p>
+        <InlineNote tone="err" className="mb-6">
+          <strong className="font-medium">Reason given:</strong>{" "}
+          {user.suspensionReason}
+        </InlineNote>
       )}
-      <p style={{ color: "#9e9e9e" }}>
-        Suspended since{" "}
-        {user.suspendedAt ? user.suspendedAt.toLocaleString() : "recently"}.
-      </p>
-      <p>
-        You can still <Link href="/nearby">browse listings</Link> and view
-        public profiles while the suspension is in place.
-      </p>
+
+      <Card className="p-5">
+        <p className="text-sm text-ash">
+          Suspended since{" "}
+          <span className="font-mono text-ink">
+            {user.suspendedAt ? user.suspendedAt.toLocaleString() : "recently"}
+          </span>
+          .
+        </p>
+        <p className="mt-3 text-sm text-ink">
+          You can still{" "}
+          <Link
+            href="/nearby"
+            className="text-rust underline-offset-4 hover:underline"
+          >
+            browse listings
+          </Link>{" "}
+          and view public profiles while the suspension is in place.
+        </p>
+      </Card>
     </main>
   );
 }

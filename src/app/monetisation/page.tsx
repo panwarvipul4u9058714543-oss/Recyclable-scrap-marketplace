@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, Sparkles, Zap } from "lucide-react";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
 import { isMonetisationEnabled } from "@/lib/monetisation/config";
@@ -16,13 +20,6 @@ import { listPromotionsForUser } from "@/lib/monetisation/promotions";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Public monetisation catalog. Explains what each paid feature provides
- * (issue #8: "clearly identify what visibility or workflow benefit"),
- * links to the promote and subscription flows for professional users, and
- * shows a disabled banner when monetisation is off so callers see why the
- * flows are unavailable.
- */
 export default async function MonetisationCatalogPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
@@ -44,62 +41,84 @@ export default async function MonetisationCatalogPage() {
   ]);
 
   return (
-    <main>
-      <p>
-        <Link href="/dashboard">← Back to dashboard</Link>
-      </p>
-      <h1>Paid features</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        Basic listing and discovery are free for everyone. Professional
-        sellers can pay for optional visibility (promoted listings) or
-        business tools (subscriptions). Direct negotiation and direct
-        payment between buyer and seller stay unchanged.
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/dashboard"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
+      </Link>
+      <PageHeader
+        eyebrow="Paid"
+        title="Paid features"
+        description="Basic listing and discovery are free for everyone. Professional sellers can pay for optional visibility (promoted listings) or business tools (subscriptions). Direct negotiation and direct payment between buyer and seller stay unchanged."
+      />
 
       {!monetisationOn && (
-        <div style={bannerStyle}>
+        <InlineNote tone="warn" className="mb-6">
           Monetisation is currently disabled. Paid features are turned off
           platform-wide until an operator sets{" "}
-          <code>MONETISATION_ENABLED=1</code>.
-        </div>
+          <code className="font-mono">MONETISATION_ENABLED=1</code>.
+        </InlineNote>
       )}
 
       {!isPro && (
-        <div style={bannerStyle}>
+        <InlineNote tone="warn" className="mb-6">
           Paid features are for dealers, businesses and recyclers. Add one of
           those roles from{" "}
-          <Link href="/profile">your profile</Link> if you have professional
-          scrap operations.
-        </div>
+          <Link href="/profile" className="underline underline-offset-4">
+            your profile
+          </Link>{" "}
+          if you have professional scrap operations.
+        </InlineNote>
       )}
 
-      <section aria-label="Promoted listings" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Promoted listings</h2>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+      <section aria-label="Promoted listings" className="space-y-4">
+        <h2 className="flex items-center gap-2 font-serif text-2xl tracking-tight">
+          <Zap className="h-4 w-4 text-rust" /> Promoted listings
+        </h2>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Object.values(PROMOTION_TIER_SPECS).map((spec) => (
-            <li key={spec.tier} style={tileStyle}>
-              <p style={{ margin: 0, fontWeight: 600 }}>{spec.label}</p>
-              <p style={metaStyle}>
-                {formatCents(spec.priceCents)} · {spec.durationDays} days
-              </p>
-              <p style={{ margin: "0.4rem 0 0" }}>{spec.benefit}</p>
+            <li key={spec.tier}>
+              <Card className="h-full p-5">
+                <p className="font-serif text-lg tracking-tight text-ink">
+                  {spec.label}
+                </p>
+                <p className="mt-1 font-mono text-xs text-ash">
+                  {formatCents(spec.priceCents)} · {spec.durationDays} days
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-ink/85">
+                  {spec.benefit}
+                </p>
+              </Card>
             </li>
           ))}
         </ul>
 
         {isPro && monetisationOn && (
-          <div style={{ marginTop: "0.6rem" }}>
-            <p style={metaStyle}>Choose one of your active listings to promote:</p>
+          <div className="space-y-2">
+            <p className="text-sm text-ash">
+              Choose one of your active listings to promote:
+            </p>
             {myListings.length === 0 ? (
-              <p style={metaStyle}>
+              <Card className="border-dashed p-4 text-sm text-ash">
                 You have no active listings yet.{" "}
-                <Link href="/listings/new">Create one</Link>.
-              </p>
+                <Link
+                  href="/listings/new"
+                  className="text-rust underline-offset-4 hover:underline"
+                >
+                  Create one
+                </Link>
+                .
+              </Card>
             ) : (
-              <ul style={{ listStyle: "none", padding: 0 }}>
+              <ul className="grid gap-1.5">
                 {myListings.map((l) => (
-                  <li key={l.id} style={{ padding: "0.25rem 0" }}>
-                    <Link href={`/monetisation/promote/${l.id}`}>
+                  <li key={l.id}>
+                    <Link
+                      href={`/monetisation/promote/${l.id}`}
+                      className="focus-ring inline-flex items-center gap-2 rounded-sm text-sm text-rust hover:underline"
+                    >
                       Promote &ldquo;{l.title}&rdquo; ({l.materialCategory})
                     </Link>
                   </li>
@@ -110,13 +129,15 @@ export default async function MonetisationCatalogPage() {
         )}
 
         {isPro && myPromotions.length > 0 && (
-          <div style={{ marginTop: "0.6rem" }}>
-            <h3 style={{ fontSize: "1rem" }}>Your recent promotions</h3>
-            <ul style={{ listStyle: "none", padding: 0 }}>
+          <div className="space-y-2">
+            <h3 className="font-serif text-lg tracking-tight">
+              Your recent promotions
+            </h3>
+            <ul className="grid gap-1 text-sm text-ash">
               {myPromotions.slice(0, 5).map((p) => (
-                <li key={p.id} style={metaStyle}>
-                  {p.tier} · {p.status} · ends{" "}
-                  {new Date(p.endsAt).toLocaleDateString()}
+                <li key={p.id}>
+                  <span className="text-ink">{p.tier}</span> · {p.status} ·
+                  ends {new Date(p.endsAt).toLocaleDateString()}
                 </li>
               ))}
             </ul>
@@ -124,22 +145,35 @@ export default async function MonetisationCatalogPage() {
         )}
       </section>
 
-      <section aria-label="Business subscriptions" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Business tools</h2>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+      <div className="rule my-10" />
+
+      <section aria-label="Business subscriptions" className="space-y-4">
+        <h2 className="flex items-center gap-2 font-serif text-2xl tracking-tight">
+          <Sparkles className="h-4 w-4 text-moss" /> Business tools
+        </h2>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Object.values(SUBSCRIPTION_PLAN_SPECS).map((spec) => (
-            <li key={spec.plan} style={tileStyle}>
-              <p style={{ margin: 0, fontWeight: 600 }}>{spec.label}</p>
-              <p style={metaStyle}>
-                {formatCents(spec.priceCents)} · {spec.durationDays} days
-              </p>
-              <p style={{ margin: "0.4rem 0 0" }}>{spec.benefit}</p>
+            <li key={spec.plan}>
+              <Card className="h-full p-5">
+                <p className="font-serif text-lg tracking-tight text-ink">
+                  {spec.label}
+                </p>
+                <p className="mt-1 font-mono text-xs text-ash">
+                  {formatCents(spec.priceCents)} · {spec.durationDays} days
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-ink/85">
+                  {spec.benefit}
+                </p>
+              </Card>
             </li>
           ))}
         </ul>
         {isPro && (
-          <p style={{ marginTop: "0.6rem" }}>
-            <Link href="/monetisation/subscription">
+          <p>
+            <Link
+              href="/monetisation/subscription"
+              className="focus-ring inline-flex items-center gap-1 rounded-sm text-sm text-rust hover:underline"
+            >
               {activeSub
                 ? `Manage your ${activeSub.plan} subscription →`
                 : "Start a subscription →"}
@@ -147,7 +181,7 @@ export default async function MonetisationCatalogPage() {
           </p>
         )}
         {isPro && mySubs.length > 0 && !activeSub && (
-          <p style={metaStyle}>
+          <p className="text-xs text-ash">
             Last subscription ended{" "}
             {new Date(mySubs[0].endsAt).toLocaleDateString()}.
           </p>
@@ -164,25 +198,3 @@ function formatCents(cents: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
-
-const bannerStyle: React.CSSProperties = {
-  marginTop: "0.8rem",
-  padding: "0.7rem 0.9rem",
-  border: "1px solid #4a4a20",
-  borderRadius: 8,
-  background: "#2a2a10",
-  color: "#fff59d",
-};
-
-const tileStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.75rem 0.9rem",
-  margin: "0.5rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0.3rem 0 0",
-};

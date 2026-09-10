@@ -2,6 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { Input, Select, Textarea } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   QUANTITY_UNITS,
   QUANTITY_UNIT_LABELS,
@@ -60,9 +66,7 @@ export function RespondToRequirementForm({
         }
         return;
       }
-      const body = (await res.json()) as {
-        response: { id: string };
-      };
+      const body = (await res.json()) as { response: { id: string } };
       setOkResponseId(body.response.id);
       router.refresh();
     } catch {
@@ -73,94 +77,69 @@ export function RespondToRequirementForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
-          {error}
-        </p>
-      )}
-      {okResponseId && (
-        <p role="status" style={{ color: "#81c784" }}>
-          Response submitted. The buyer will see it on their requirement.
-        </p>
-      )}
-      <fieldset style={fieldsetStyle}>
-        <legend>What you can supply</legend>
-        <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="offer-qty">Quantity</label>
-            <input
-              id="offer-qty"
-              type="number"
-              min="0"
-              step="any"
-              value={offeredQuantity}
-              onChange={(e) => setOfferedQuantity(e.target.value)}
-              style={inputStyle}
-            />
+    <Card className="p-5 sm:p-6">
+      <form onSubmit={onSubmit} className="grid gap-4">
+        {error ? <InlineNote tone="err">{error}</InlineNote> : null}
+        {okResponseId ? (
+          <InlineNote tone="ok">
+            Response submitted. The buyer will see it on their requirement.
+          </InlineNote>
+        ) : null}
+
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-ink">
+            What you can supply
+          </legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="offer-qty">Quantity</Label>
+              <Input
+                id="offer-qty"
+                type="number"
+                min="0"
+                step="any"
+                value={offeredQuantity}
+                onChange={(e) => setOfferedQuantity(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="offer-unit">Unit</Label>
+              <Select
+                id="offer-unit"
+                value={offeredQuantityUnit}
+                onChange={(e) =>
+                  setOfferedQuantityUnit(e.target.value as QuantityUnit)
+                }
+              >
+                {QUANTITY_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {QUANTITY_UNIT_LABELS[u]}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="offer-unit">Unit</label>
-            <select
-              id="offer-unit"
-              value={offeredQuantityUnit}
-              onChange={(e) =>
-                setOfferedQuantityUnit(e.target.value as QuantityUnit)
-              }
-              style={inputStyle}
-            >
-              {QUANTITY_UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {QUANTITY_UNIT_LABELS[u]}
-                </option>
-              ))}
-            </select>
-          </div>
+        </fieldset>
+
+        <div>
+          <Label htmlFor="offer-notes">Notes (optional)</Label>
+          <Textarea
+            id="offer-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Grade, cadence, pickup arrangements…"
+          />
         </div>
-      </fieldset>
-      <label htmlFor="offer-notes">Notes (optional)</label>
-      <textarea
-        id="offer-notes"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        rows={3}
-        maxLength={500}
-        placeholder="Grade, cadence, pickup arrangements…"
-        style={{ ...inputStyle, height: "auto", fontFamily: "inherit" }}
-      />
-      <button type="submit" disabled={busy} style={primaryButtonStyle}>
-        {busy ? "Submitting…" : "Submit response"}
-      </button>
-    </form>
+
+        <div>
+          <Button type="submit" disabled={busy} variant="primary" size="lg">
+            <Send className="h-4 w-4" />
+            {busy ? "Submitting…" : "Submit response"}
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.55rem",
-  margin: "0.35rem 0 1rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "1px solid #444",
-  background: "#1a1d23",
-  color: "inherit",
-  fontFamily: "inherit",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.6rem 1.2rem",
-  fontSize: "1rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const fieldsetStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.6rem 1rem 0",
-  margin: "0 0 1rem",
-};

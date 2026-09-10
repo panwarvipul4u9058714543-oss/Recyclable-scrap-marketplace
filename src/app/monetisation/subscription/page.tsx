@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isMonetisationEnabled } from "@/lib/monetisation/config";
 import {
@@ -19,48 +23,63 @@ export default async function SubscriptionPage() {
   const active = await getActiveSubscription(user.id);
 
   return (
-    <main>
-      <p>
-        <Link href="/monetisation">← Back to paid features</Link>
-      </p>
-      <h1>Business tools subscription</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        Optional monthly plan for professional users. Does not change how you
-        negotiate or settle payment with counterparties.
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/monetisation"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to paid features
+      </Link>
+      <PageHeader
+        eyebrow="Paid"
+        title="Business tools subscription"
+        description="Optional monthly plan for professional users. Does not change how you negotiate or settle payment with counterparties."
+      />
 
       {!isMonetisationEnabled() && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
+        <InlineNote tone="err" className="mb-6">
           Monetisation is currently disabled — subscriptions are turned off
           until an operator enables it.
-        </p>
+        </InlineNote>
       )}
 
       {active ? (
-        <section aria-label="Active subscription" style={activeStyle}>
-          <p style={{ margin: 0, fontWeight: 600 }}>
-            {SUBSCRIPTION_PLAN_SPECS[active.plan].label}
-          </p>
-          <p style={metaStyle}>
-            Started {new Date(active.startsAt).toLocaleDateString()} · Renews /
-            ends {new Date(active.endsAt).toLocaleDateString()}
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            {SUBSCRIPTION_PLAN_SPECS[active.plan].benefit}
-          </p>
-          <SubscriptionControls mode="cancel" />
+        <section aria-label="Active subscription">
+          <Card className="border-moss/40 bg-moss-soft/60 p-6">
+            <p className="font-serif text-xl tracking-tight text-ink">
+              {SUBSCRIPTION_PLAN_SPECS[active.plan].label}
+            </p>
+            <p className="mt-1 text-xs text-ash">
+              Started {new Date(active.startsAt).toLocaleDateString()} · Renews
+              / ends {new Date(active.endsAt).toLocaleDateString()}
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-ink/85">
+              {SUBSCRIPTION_PLAN_SPECS[active.plan].benefit}
+            </p>
+            <div className="mt-4">
+              <SubscriptionControls mode="cancel" />
+            </div>
+          </Card>
         </section>
       ) : (
         <section aria-label="Available plans">
-          <ul style={{ listStyle: "none", padding: 0 }}>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Object.values(SUBSCRIPTION_PLAN_SPECS).map((spec) => (
-              <li key={spec.plan} style={tileStyle}>
-                <p style={{ margin: 0, fontWeight: 600 }}>{spec.label}</p>
-                <p style={metaStyle}>
-                  {formatCents(spec.priceCents)} · {spec.durationDays} days
-                </p>
-                <p style={{ margin: "0.4rem 0 0.6rem" }}>{spec.benefit}</p>
-                <SubscriptionControls mode="subscribe" plan={spec.plan} />
+              <li key={spec.plan}>
+                <Card className="h-full p-5">
+                  <p className="font-serif text-lg tracking-tight text-ink">
+                    {spec.label}
+                  </p>
+                  <p className="mt-1 font-mono text-xs text-ash">
+                    {formatCents(spec.priceCents)} · {spec.durationDays} days
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-ink/85">
+                    {spec.benefit}
+                  </p>
+                  <div className="mt-4">
+                    <SubscriptionControls mode="subscribe" plan={spec.plan} />
+                  </div>
+                </Card>
               </li>
             ))}
           </ul>
@@ -77,24 +96,3 @@ function formatCents(cents: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
-
-const tileStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.75rem 0.9rem",
-  margin: "0.6rem 0",
-};
-
-const activeStyle: React.CSSProperties = {
-  border: "1px solid #2e7d32",
-  borderRadius: 8,
-  padding: "0.9rem 1rem",
-  margin: "0.6rem 0",
-  background: "#0f2510",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0.3rem 0 0",
-};

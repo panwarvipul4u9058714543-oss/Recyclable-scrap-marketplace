@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   BulkResponseError,
@@ -39,29 +41,35 @@ export default async function BulkResponseDetailPage({
   const counterpartyId = viewerIsBuyer ? detail.supplierId : detail.buyerId;
 
   return (
-    <main>
-      <p>
-        <Link href={viewerIsBuyer ? `/bulk/${detail.requirementId}` : "/bulk"}>
-          ← Back
-        </Link>
-      </p>
-      <h1 style={{ marginBottom: "0.2rem" }}>
-        Bulk response — {MATERIAL_LABELS[detail.requirementMaterial as MaterialCategory]}
-      </h1>
-      <p style={{ color: "#9e9e9e", marginTop: 0 }}>
-        Buyer wants at least {detail.requirementMinQuantity}{" "}
-        {QUANTITY_UNIT_LABELS[detail.requirementMinQuantityUnit as QuantityUnit]} in{" "}
-        {detail.requirementRegion} ·{" "}
-        {viewerIsBuyer
-          ? "You are the buyer."
-          : "You are the responding supplier."}{" "}
-        · <Link href={`/u/${counterpartyId}`}>View their profile</Link>
-      </p>
-      <p style={{ fontSize: "0.9rem" }}>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href={viewerIsBuyer ? `/bulk/${detail.requirementId}` : "/bulk"}
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back
+      </Link>
+      <PageHeader
+        eyebrow={viewerIsBuyer ? "Bulk match · buyer" : "Bulk match · supplier"}
+        title={`Bulk response — ${MATERIAL_LABELS[detail.requirementMaterial as MaterialCategory]}`}
+        description={
+          <>
+            Buyer wants at least {detail.requirementMinQuantity}{" "}
+            {QUANTITY_UNIT_LABELS[detail.requirementMinQuantityUnit as QuantityUnit]}{" "}
+            in {detail.requirementRegion} ·{" "}
+            <Link
+              href={`/u/${counterpartyId}`}
+              className="text-rust underline-offset-4 hover:underline"
+            >
+              View their profile
+            </Link>
+          </>
+        }
+      />
+
+      <p className="mb-6 text-sm text-ink">
         Supplier offers{" "}
-        <strong>
-          {detail.offeredQuantity}{" "}
-          {QUANTITY_UNIT_LABELS[detail.offeredQuantityUnit]}
+        <strong className="font-mono font-medium">
+          {detail.offeredQuantity} {QUANTITY_UNIT_LABELS[detail.offeredQuantityUnit]}
         </strong>
         {detail.notes && <> — {detail.notes}</>}
       </p>
@@ -75,9 +83,7 @@ export default async function BulkResponseDetailPage({
           contactRevealed: detail.contactRevealed,
           buyerPhone: detail.buyerPhone,
           supplierPhone: detail.supplierPhone,
-          expiresAt: detail.expiresAt
-            ? detail.expiresAt.toISOString()
-            : null,
+          expiresAt: detail.expiresAt ? detail.expiresAt.toISOString() : null,
           viewerIsBuyer,
           actualQuantity: detail.actualQuantity,
           finalPrice: detail.finalPrice,

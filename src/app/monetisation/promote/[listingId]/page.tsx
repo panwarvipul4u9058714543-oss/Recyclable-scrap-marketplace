@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { InlineNote } from "@/components/ui/inline-note";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
 import { isMonetisationEnabled } from "@/lib/monetisation/config";
@@ -34,41 +38,53 @@ export default async function PromoteListingPage({ params }: PromotePageProps) {
   if (!listing || listing.sellerId !== user.id) notFound();
 
   return (
-    <main>
-      <p>
-        <Link href="/monetisation">← Back to paid features</Link>
-      </p>
-      <h1>Promote &ldquo;{listing.title}&rdquo;</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        {listing.materialCategory} · {listing.locality} · {listing.status}
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/monetisation"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to paid features
+      </Link>
+      <PageHeader
+        eyebrow="Promote"
+        title={`Promote “${listing.title}”`}
+        description={`${listing.materialCategory} · ${listing.locality} · ${listing.status}`}
+      />
 
       {!isMonetisationEnabled() && (
-        <p role="alert" style={{ color: "#ff8a80" }}>
+        <InlineNote tone="err" className="mb-6">
           Monetisation is currently disabled — promotion purchases are refused
           until an operator turns it back on.
-        </p>
+        </InlineNote>
       )}
 
-      <p style={{ marginTop: "1rem" }}>
+      <p className="mb-6 text-sm leading-relaxed text-ink/85">
         Pick a promotion tier. The promotion boosts this listing in
         nearby-discovery and marks it with a Promoted/Featured badge; it does
         NOT change how the buyer contacts you or how you settle payment.
       </p>
 
-      <ul style={{ listStyle: "none", padding: 0 }}>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Object.values(PROMOTION_TIER_SPECS).map((spec) => (
-          <li key={spec.tier} style={tileStyle}>
-            <p style={{ margin: 0, fontWeight: 600 }}>{spec.label}</p>
-            <p style={metaStyle}>
-              {formatCents(spec.priceCents)} · {spec.durationDays} days
-            </p>
-            <p style={{ margin: "0.4rem 0 0.6rem" }}>{spec.benefit}</p>
-            <PromoteListingForm
-              listingId={listing.id}
-              tier={spec.tier}
-              label={spec.label}
-            />
+          <li key={spec.tier}>
+            <Card className="h-full p-5">
+              <p className="font-serif text-lg tracking-tight text-ink">
+                {spec.label}
+              </p>
+              <p className="mt-1 font-mono text-xs text-ash">
+                {formatCents(spec.priceCents)} · {spec.durationDays} days
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-ink/85">
+                {spec.benefit}
+              </p>
+              <div className="mt-4">
+                <PromoteListingForm
+                  listingId={listing.id}
+                  tier={spec.tier}
+                  label={spec.label}
+                />
+              </div>
+            </Card>
           </li>
         ))}
       </ul>
@@ -83,16 +99,3 @@ function formatCents(cents: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
-
-const tileStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.75rem 0.9rem",
-  margin: "0.6rem 0",
-};
-
-const metaStyle: React.CSSProperties = {
-  color: "#9e9e9e",
-  fontSize: "0.85rem",
-  margin: "0.3rem 0 0",
-};

@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, LineChart } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   getKpiChannelBreakdown,
   getKpiSummary,
@@ -19,12 +23,6 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Operator analytics. Admin-gated; a non-admin gets a 404 so the surface is
- * never confirmed. Everything on this page is derived from AnalyticsEvent
- * rows the services record on their own write paths — see
- * docs/analytics-kpis.md for the KPI catalog and definitions.
- */
 export default async function AdminAnalyticsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/register");
@@ -41,27 +39,32 @@ export default async function AdminAnalyticsPage() {
   const monetisationOn = isMonetisationEnabled();
 
   return (
-    <main>
-      <p>
-        <Link href="/dashboard">← Back to dashboard</Link>
-      </p>
-      <h1>Marketplace analytics</h1>
-      <p style={{ color: "#9e9e9e" }}>
-        Aggregated from analytics events emitted on every state-changing seam.
-        Percentages read as “—” until at least one outcome (completed or
-        failed) is recorded. KPI definitions live in{" "}
-        <code>docs/analytics-kpis.md</code>.
-      </p>
+    <main className="container-page py-10 sm:py-14">
+      <Link
+        href="/dashboard"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-ash hover:text-ink"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
+      </Link>
+      <PageHeader
+        eyebrow="Admin"
+        title="Marketplace analytics"
+        description={
+          <span className="flex items-start gap-2">
+            <LineChart className="mt-1 h-4 w-4 shrink-0 text-rust" />
+            <span>
+              Aggregated from analytics events emitted on every state-changing
+              seam. Percentages read as &ldquo;—&rdquo; until at least one
+              outcome (completed or failed) is recorded. KPI definitions live
+              in <code className="font-mono">docs/analytics-kpis.md</code>.
+            </span>
+          </span>
+        }
+      />
 
-      <section aria-label="Headline KPIs" style={{ marginTop: "1.25rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Headline KPIs</h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
+      <section aria-label="Headline KPIs" className="mb-10 space-y-4">
+        <h2 className="font-serif text-2xl tracking-tight">Headline KPIs</h2>
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <KpiTile label="Registrations" value={summary.totalRegistrations} />
           <KpiTile label="Listings" value={summary.totalListings} />
           <KpiTile label="Listing views" value={summary.totalListingViews} />
@@ -86,95 +89,111 @@ export default async function AdminAnalyticsPage() {
             value={formatSeconds(summary.medianResponseSeconds)}
           />
           <KpiTile label="Complaints" value={summary.complaintsCount} />
-          <KpiTile label="Repeat completers" value={summary.repeatCompleters} />
+          <KpiTile
+            label="Repeat completers"
+            value={summary.repeatCompleters}
+          />
         </div>
       </section>
 
-      <section
-        aria-label="Pilot comparison"
-        style={{ marginTop: "1.5rem" }}
-      >
-        <h2 style={{ fontSize: "1.1rem" }}>Pilot-target comparison</h2>
-        <p style={{ color: "#9e9e9e", fontSize: "0.9rem", marginTop: 0 }}>
+      <section aria-label="Pilot comparison" className="mb-10 space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">
+          Pilot-target comparison
+        </h2>
+        <p className="text-sm text-ash">
           Live KPIs against the pilot targets defined in{" "}
-          <code>src/lib/analytics/pilot-targets.ts</code>. Update that file
-          when the pilot targets change. Rows read as{" "}
-          <strong>unknown</strong> until enough data is recorded to compute
-          the value (e.g. no outcomes yet → rates are unknown).
+          <code className="font-mono">
+            src/lib/analytics/pilot-targets.ts
+          </code>
+          . Update that file when the pilot targets change. Rows read as{" "}
+          <strong className="font-medium text-ink">unknown</strong> until
+          enough data is recorded to compute the value.
         </p>
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <Card className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr>
-                <th style={thStyle}>Metric</th>
-                <th style={thStyle}>Actual</th>
-                <th style={thStyle}>Target</th>
-                <th style={thStyle}>Status</th>
+              <tr className="border-b border-dune/70 bg-sand/40">
+                <Th>Metric</Th>
+                <Th>Actual</Th>
+                <Th>Target</Th>
+                <Th>Status</Th>
               </tr>
             </thead>
             <tbody>
               {pilotComparison.map((row) => (
-                <tr key={row.key}>
-                  <td style={tdStyle}>{row.label}</td>
-                  <td style={tdStyle}>{formatComparisonValue(row.actual, row.isRate)}</td>
-                  <td style={tdStyle}>
+                <tr
+                  key={row.key}
+                  className="border-b border-dune/50 last:border-0"
+                >
+                  <Td>{row.label}</Td>
+                  <Td>{formatComparisonValue(row.actual, row.isRate)}</Td>
+                  <Td>
                     {row.direction === "at_or_above" ? "≥ " : "≤ "}
                     {formatComparisonValue(row.target, row.isRate)}
-                  </td>
-                  <td style={tdStyle}>
+                  </Td>
+                  <Td>
                     <StatusBadge status={row.status} />
-                  </td>
+                  </Td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-        <p style={{ color: "#9e9e9e", fontSize: "0.8rem", marginTop: "0.5rem" }}>
+        </Card>
+        <p className="text-xs text-ash">
           Pilot targets:{" "}
-          {Object.entries(PILOT_TARGETS)
-            .map(([k, v]) => `${k}=${v}`)
-            .join(", ")}
+          <span className="font-mono">
+            {Object.entries(PILOT_TARGETS)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(", ")}
+          </span>
         </p>
       </section>
 
-      <section aria-label="Channel breakdown" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Channel breakdown</h2>
-        <p style={{ color: "#9e9e9e", fontSize: "0.9rem", marginTop: 0 }}>
+      <section aria-label="Channel breakdown" className="mb-10 space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">
+          Channel breakdown
+        </h2>
+        <p className="text-sm text-ash">
           Route mode and the bulk marketplace measured separately from
           household discovery, per issue #7 acceptance criteria.
         </p>
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <Card className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr>
-                <th style={thStyle}>Channel</th>
-                <th style={thStyle}>Listings</th>
-                <th style={thStyle}>Interests</th>
-                <th style={thStyle}>Reservations</th>
-                <th style={thStyle}>Completions</th>
-                <th style={thStyle}>Failures</th>
-                <th style={thStyle}>Completion rate</th>
+              <tr className="border-b border-dune/70 bg-sand/40">
+                <Th>Channel</Th>
+                <Th>Listings</Th>
+                <Th>Interests</Th>
+                <Th>Reservations</Th>
+                <Th>Completions</Th>
+                <Th>Failures</Th>
+                <Th>Completion rate</Th>
               </tr>
             </thead>
             <tbody>
               {channels.map((c) => (
-                <tr key={c.channel}>
-                  <td style={tdStyle}>{c.channel}</td>
-                  <td style={tdStyle}>{c.listings}</td>
-                  <td style={tdStyle}>{c.interests}</td>
-                  <td style={tdStyle}>{c.reservations}</td>
-                  <td style={tdStyle}>{c.completions}</td>
-                  <td style={tdStyle}>{c.failures}</td>
-                  <td style={tdStyle}>{formatRate(c.completionRate)}</td>
+                <tr
+                  key={c.channel}
+                  className="border-b border-dune/50 last:border-0"
+                >
+                  <Td>{c.channel}</Td>
+                  <Td>{c.listings}</Td>
+                  <Td>{c.interests}</Td>
+                  <Td>{c.reservations}</Td>
+                  <Td>{c.completions}</Td>
+                  <Td>{c.failures}</Td>
+                  <Td>{formatRate(c.completionRate)}</Td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       </section>
 
-      <section aria-label="Supply and demand" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Supply and demand density</h2>
+      <section aria-label="Supply and demand" className="mb-10 space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">
+          Supply and demand density
+        </h2>
         <DensityTable
           title="By locality"
           keyLabel="Locality"
@@ -192,23 +211,27 @@ export default async function AdminAnalyticsPage() {
         />
       </section>
 
-      <section aria-label="Monetisation" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Monetisation</h2>
-        <p style={{ color: "#9e9e9e", fontSize: "0.9rem", marginTop: 0 }}>
+      <section aria-label="Monetisation" className="mb-10 space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">Monetisation</h2>
+        <p className="text-sm text-ash">
           Exposure, activation and usage of paid features (issue #8). Global
           switch is{" "}
-          <strong>{monetisationOn ? "ENABLED" : "DISABLED"}</strong> — set the{" "}
-          <code>MONETISATION_ENABLED</code> env var to <code>1</code> to turn
-          it on. Manage placements at{" "}
-          <Link href="/admin/monetisation">/admin/monetisation</Link>.
+          <Badge tone={monetisationOn ? "moss" : "neutral"}>
+            {monetisationOn ? "ENABLED" : "DISABLED"}
+          </Badge>{" "}
+          — set the{" "}
+          <code className="font-mono">MONETISATION_ENABLED</code> env var to{" "}
+          <code className="font-mono">1</code> to turn it on. Manage placements
+          at{" "}
+          <Link
+            href="/admin/monetisation"
+            className="text-rust underline-offset-4 hover:underline"
+          >
+            /admin/monetisation
+          </Link>
+          .
         </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <KpiTile
             label="Active promotions"
             value={monetisation.activePromotions}
@@ -241,10 +264,7 @@ export default async function AdminAnalyticsPage() {
             label="Active ad placements"
             value={monetisation.activeAdPlacements}
           />
-          <KpiTile
-            label="Ad impressions"
-            value={monetisation.adImpressions}
-          />
+          <KpiTile label="Ad impressions" value={monetisation.adImpressions} />
           <KpiTile label="Ad clicks" value={monetisation.adClicks} />
           <KpiTile
             label="Ad click-through rate"
@@ -261,38 +281,54 @@ export default async function AdminAnalyticsPage() {
         </div>
       </section>
 
-      <section aria-label="Repeat usage" style={{ marginTop: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Repeat usage</h2>
+      <section aria-label="Repeat usage" className="space-y-3">
+        <h2 className="font-serif text-2xl tracking-tight">Repeat usage</h2>
         {repeat.length === 0 ? (
-          <p style={{ color: "#9e9e9e" }}>
+          <Card className="border-dashed p-5 text-sm text-ash">
             No completed pickups yet. Repeat usage becomes visible once
             participants finish more than one transaction.
-          </p>
+          </Card>
         ) : (
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Role</th>
-                <th style={thStyle}>Distinct completers</th>
-                <th style={thStyle}>Once</th>
-                <th style={thStyle}>2+ (repeat)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {repeat.map((r) => (
-                <tr key={r.role}>
-                  <td style={tdStyle}>{r.role}</td>
-                  <td style={tdStyle}>{r.distinctCompleters}</td>
-                  <td style={tdStyle}>{r.onceCount}</td>
-                  <td style={tdStyle}>{r.repeatCount}</td>
+          <Card className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-dune/70 bg-sand/40">
+                  <Th>Role</Th>
+                  <Th>Distinct completers</Th>
+                  <Th>Once</Th>
+                  <Th>2+ (repeat)</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {repeat.map((r) => (
+                  <tr
+                    key={r.role}
+                    className="border-b border-dune/50 last:border-0"
+                  >
+                    <Td>{r.role}</Td>
+                    <Td>{r.distinctCompleters}</Td>
+                    <Td>{r.onceCount}</Td>
+                    <Td>{r.repeatCount}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
         )}
       </section>
     </main>
   );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.14em] text-ash">
+      {children}
+    </th>
+  );
+}
+function Td({ children }: { children: React.ReactNode }) {
+  return <td className="px-3 py-2 text-ink">{children}</td>;
 }
 
 function KpiTile({
@@ -303,12 +339,14 @@ function KpiTile({
   value: number | string;
 }) {
   return (
-    <div style={tileStyle}>
-      <div style={{ color: "#9e9e9e", fontSize: "0.85rem" }}>{label}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 600, marginTop: "0.2rem" }}>
+    <Card className="p-4">
+      <div className="text-xs uppercase tracking-[0.14em] text-ash">
+        {label}
+      </div>
+      <div className="mt-1 font-serif text-3xl leading-none text-ink">
         {value}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -323,36 +361,39 @@ function DensityTable({
 }) {
   if (rows.length === 0) {
     return (
-      <>
-        <h3 style={{ fontSize: "0.95rem", marginTop: "1rem" }}>{title}</h3>
-        <p style={{ color: "#9e9e9e" }}>No data yet.</p>
-      </>
+      <div>
+        <h3 className="mt-4 font-serif text-lg tracking-tight">{title}</h3>
+        <p className="text-sm text-ash">No data yet.</p>
+      </div>
     );
   }
   return (
-    <>
-      <h3 style={{ fontSize: "0.95rem", marginTop: "1rem" }}>{title}</h3>
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
+    <div>
+      <h3 className="mt-4 font-serif text-lg tracking-tight">{title}</h3>
+      <Card className="mt-2 overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
-            <tr>
-              <th style={thStyle}>{keyLabel}</th>
-              <th style={thStyle}>Supply (listings)</th>
-              <th style={thStyle}>Demand (interests + bulk reqs)</th>
+            <tr className="border-b border-dune/70 bg-sand/40">
+              <Th>{keyLabel}</Th>
+              <Th>Supply (listings)</Th>
+              <Th>Demand (interests + bulk reqs)</Th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.key}>
-                <td style={tdStyle}>{r.key}</td>
-                <td style={tdStyle}>{r.supply}</td>
-                <td style={tdStyle}>{r.demand}</td>
+              <tr
+                key={r.key}
+                className="border-b border-dune/50 last:border-0"
+              >
+                <Td>{r.key}</Td>
+                <Td>{r.supply}</Td>
+                <Td>{r.demand}</Td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-    </>
+      </Card>
+    </div>
   );
 }
 
@@ -371,29 +412,14 @@ function formatComparisonValue(
 }
 
 function StatusBadge({ status }: { status: ComparisonStatus }) {
-  const bg =
-    status === "met" ? "#2e7d32" : status === "missed" ? "#c62828" : "#616161";
-  const label = status === "met" ? "Met" : status === "missed" ? "Missed" : "Unknown";
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "0.15rem 0.55rem",
-        borderRadius: 999,
-        background: bg,
-        color: "#fff",
-        fontSize: "0.75rem",
-        fontWeight: 600,
-      }}
-    >
-      {label}
-    </span>
-  );
+  const label =
+    status === "met" ? "Met" : status === "missed" ? "Missed" : "Unknown";
+  const tone: "moss" | "warn" | "neutral" =
+    status === "met" ? "moss" : status === "missed" ? "warn" : "neutral";
+  return <Badge tone={tone}>{label}</Badge>;
 }
 
 function formatCents(cents: number): string {
-  // Declared price only — no real currency is charged. Rendered as INR paise
-  // → rupees to match the pilot's units, without a locale library.
   const rupees = cents / 100;
   return `₹${rupees.toLocaleString("en-IN", {
     minimumFractionDigits: 0,
@@ -407,29 +433,3 @@ function formatSeconds(seconds: number | null): string {
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
   return `${Math.round(seconds / 3600)}h`;
 }
-
-const tileStyle: React.CSSProperties = {
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "0.75rem 0.9rem",
-};
-
-const tableStyle: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.9rem",
-  marginTop: "0.5rem",
-};
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  borderBottom: "1px solid #333",
-  padding: "0.4rem 0.5rem",
-  color: "#9e9e9e",
-  fontWeight: 500,
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "0.4rem 0.5rem",
-  borderBottom: "1px solid #222",
-};

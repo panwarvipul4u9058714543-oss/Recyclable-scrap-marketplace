@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { InlineNote } from "@/components/ui/inline-note";
 import type { SubscriptionPlan } from "@/lib/monetisation/plans";
 
 type Props =
@@ -64,59 +66,33 @@ export function SubscriptionControls(props: Props) {
 
   if (props.mode === "cancel") {
     return (
-      <>
-        {error && (
-          <p role="alert" style={{ color: "#ff8a80", margin: "0.4rem 0 0" }}>
-            {error}
-          </p>
-        )}
-        <button
+      <div className="space-y-2">
+        {error && <InlineNote tone="err">{error}</InlineNote>}
+        <Button
           type="button"
           onClick={cancel}
           disabled={busy}
-          style={secondaryButtonStyle}
+          variant="secondary"
+          size="sm"
         >
           {busy ? "Cancelling…" : "Cancel subscription"}
-        </button>
-      </>
+        </Button>
+      </div>
     );
   }
 
   return (
-    <>
-      {error && (
-        <p role="alert" style={{ color: "#ff8a80", margin: "0 0 0.4rem" }}>
-          {error}
-        </p>
-      )}
-      <button
+    <div className="space-y-2">
+      {error && <InlineNote tone="err">{error}</InlineNote>}
+      <Button
         type="button"
         onClick={() => subscribe(props.plan)}
         disabled={busy}
-        style={primaryButtonStyle}
+        variant="primary"
+        size="sm"
       >
         {busy ? "Subscribing…" : "Subscribe"}
-      </button>
-    </>
+      </Button>
+    </div>
   );
 }
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#2e7d32",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  fontSize: "0.9rem",
-  borderRadius: 6,
-  border: "1px solid #666",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer",
-};
