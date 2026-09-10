@@ -105,6 +105,11 @@ export default async function DashboardPage() {
                 Moderation queue
               </Link>
             )}
+            {user.isAdmin && (
+              <Link href="/admin/analytics" style={ctaStyle}>
+                Marketplace analytics
+              </Link>
+            )}
           </div>
         </section>
       )}
@@ -113,6 +118,9 @@ export default async function DashboardPage() {
         <section aria-label="Admin actions" style={{ marginTop: "1.5rem" }}>
           <Link href="/moderation" style={ctaStyle}>
             Moderation queue
+          </Link>
+          <Link href="/admin/analytics" style={{ ...ctaStyle, marginLeft: "0.6rem" }}>
+            Marketplace analytics
           </Link>
         </section>
       )}
