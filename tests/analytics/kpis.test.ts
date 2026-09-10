@@ -3,6 +3,7 @@ import { recordEvent } from "@/lib/analytics/events";
 import {
   getKpiChannelBreakdown,
   getKpiSummary,
+  getMonetisationKpis,
   getRepeatUsage,
   getSupplyDemandDensity,
 } from "@/lib/analytics/kpis";
@@ -214,6 +215,133 @@ describe("getSupplyDemandDensity", () => {
     const collector = density.byRole.find((r) => r.key === "COLLECTOR");
     expect(collector?.supply).toBe(0);
     expect(collector?.demand).toBe(1);
+  });
+});
+
+describe("getMonetisationKpis", () => {
+  it("counts active promotions/subscriptions/placements and sums declared revenue", async () => {
+    const { user: pro } = await getOrCreateUserByPhone("+911111111111");
+    const { user: viewer } = await getOrCreateUserByPhone("+912222222222");
+
+    async function makeListing(title: string) {
+      return db.listing.create({
+        data: {
+          sellerId: pro.id,
+          sellerType: "BUSINESS",
+          materialCategory: "PLASTIC",
+          title,
+          photos: "[]",
+          quantityMin: 1,
+          quantityMax: 2,
+          quantityUnit: "KG",
+          locality: "Somewhere",
+          latitude: 0,
+          longitude: 0,
+          availability: "WEEKENDS",
+        },
+      });
+    }
+    const l1 = await makeListing("l1");
+    const l2 = await makeListing("l2");
+    const l3 = await makeListing("l3");
+
+    // Two active promotions (one expired), one active subscription, one paused
+    // ad placement (should not count as active).
+    await db.promotion.createMany({
+      data: [
+        {
+          listingId: l1.id,
+          promoterId: pro.id,
+          tier: "STANDARD",
+          status: "ACTIVE",
+          priceCents: 100,
+          startsAt: new Date(),
+          endsAt: new Date(Date.now() + 60_000),
+        },
+        {
+          listingId: l2.id,
+          promoterId: pro.id,
+          tier: "PREMIUM",
+          status: "ACTIVE",
+          priceCents: 200,
+          startsAt: new Date(),
+          endsAt: new Date(Date.now() + 60_000),
+        },
+        {
+          listingId: l3.id,
+          promoterId: pro.id,
+          tier: "STANDARD",
+          status: "EXPIRED",
+          priceCents: 100,
+          startsAt: new Date(Date.now() - 3600_000),
+          endsAt: new Date(Date.now() - 60_000),
+        },
+      ],
+    });
+    await db.premiumSubscription.create({
+      data: {
+        subscriberId: pro.id,
+        plan: "BUSINESS",
+        status: "ACTIVE",
+        priceCents: 999,
+        startsAt: new Date(),
+        endsAt: new Date(Date.now() + 60_000),
+      },
+    });
+    await db.adPlacement.createMany({
+      data: [
+        {
+          surface: "DISCOVERY",
+          headline: "Active",
+          body: "b",
+          linkUrl: "https://x",
+        },
+        {
+          surface: "DISCOVERY",
+          headline: "Paused",
+          body: "b",
+          linkUrl: "https://x",
+          status: "PAUSED",
+        },
+      ],
+    });
+
+    await seed([
+      {
+        type: "PROMOTION_PURCHASED",
+        actorId: pro.id,
+        metadata: { priceCents: 100 },
+      },
+      {
+        type: "PROMOTION_PURCHASED",
+        actorId: pro.id,
+        metadata: { priceCents: 200 },
+      },
+      { type: "PROMOTION_CANCELLED", actorId: pro.id },
+      { type: "PROMOTION_EXPIRED", actorId: pro.id },
+      {
+        type: "SUBSCRIPTION_STARTED",
+        actorId: pro.id,
+        metadata: { priceCents: 999 },
+      },
+      { type: "AD_PLACEMENT_IMPRESSION", actorId: viewer.id },
+      { type: "AD_PLACEMENT_IMPRESSION", actorId: viewer.id },
+      { type: "AD_PLACEMENT_CLICK", actorId: viewer.id },
+    ]);
+
+    const k = await getMonetisationKpis();
+    expect(k.activePromotions).toBe(2);
+    expect(k.totalPromotionsPurchased).toBe(2);
+    expect(k.totalPromotionsCancelled).toBe(1);
+    expect(k.totalPromotionsExpired).toBe(1);
+    expect(k.activeSubscriptions).toBe(1);
+    expect(k.totalSubscriptionsStarted).toBe(1);
+    expect(k.activeAdPlacements).toBe(1);
+    expect(k.adImpressions).toBe(2);
+    expect(k.adClicks).toBe(1);
+    expect(k.adClickThroughRate).toBeCloseTo(0.5);
+    expect(k.promotionRevenueCentsDeclared).toBe(300);
+    expect(k.subscriptionRevenueCentsDeclared).toBe(999);
   });
 });
 

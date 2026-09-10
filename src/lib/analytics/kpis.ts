@@ -251,6 +251,99 @@ export interface RepeatUsageBucket {
  * recyclers. `onceCount` is people with exactly one completion; `repeatCount`
  * is people with two or more.
  */
+export interface MonetisationKpis {
+  activePromotions: number;
+  totalPromotionsPurchased: number;
+  totalPromotionsCancelled: number;
+  totalPromotionsExpired: number;
+  activeSubscriptions: number;
+  totalSubscriptionsStarted: number;
+  totalSubscriptionsCancelled: number;
+  activeAdPlacements: number;
+  adImpressions: number;
+  adClicks: number;
+  adClickThroughRate: number | null;
+  /** Sum of `priceCents` from all purchased promotions in-window. */
+  promotionRevenueCentsDeclared: number;
+  /** Sum of `priceCents` from all subscriptions started in-window. */
+  subscriptionRevenueCentsDeclared: number;
+}
+
+/**
+ * Aggregate monetisation exposure, activation and usage. Reads promotion and
+ * subscription counts directly from the domain rows (so a lifecycle status
+ * change is reflected immediately) and derives ad impression / click totals
+ * from AnalyticsEvent so the metric matches the surface that actually
+ * rendered the placement.
+ */
+export async function getMonetisationKpis(
+  window: KpiWindow = {},
+): Promise<MonetisationKpis> {
+  const dbModule = await import("@/lib/db");
+  const { db } = dbModule;
+  const now = new Date();
+
+  const [
+    activePromotions,
+    activeSubscriptions,
+    activeAdPlacements,
+    purchasedEvents,
+    cancelledEvents,
+    expiredEvents,
+    subStartedEvents,
+    subCancelledEvents,
+    adImpressions,
+    adClicks,
+  ] = await Promise.all([
+    db.promotion.count({
+      where: { status: "ACTIVE", endsAt: { gt: now } },
+    }),
+    db.premiumSubscription.count({
+      where: { status: "ACTIVE", endsAt: { gt: now } },
+    }),
+    db.adPlacement.count({
+      where: {
+        status: "ACTIVE",
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      },
+    }),
+    listEvents({ ...window, type: "PROMOTION_PURCHASED" }),
+    countEvents({ ...window, type: "PROMOTION_CANCELLED" }),
+    countEvents({ ...window, type: "PROMOTION_EXPIRED" }),
+    listEvents({ ...window, type: "SUBSCRIPTION_STARTED" }),
+    countEvents({ ...window, type: "SUBSCRIPTION_CANCELLED" }),
+    countEvents({ ...window, type: "AD_PLACEMENT_IMPRESSION" }),
+    countEvents({ ...window, type: "AD_PLACEMENT_CLICK" }),
+  ]);
+
+  function sumPriceCents(events: { metadata: Record<string, unknown> | null }[]) {
+    let total = 0;
+    for (const e of events) {
+      const raw = e.metadata?.priceCents;
+      if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) {
+        total += raw;
+      }
+    }
+    return total;
+  }
+
+  return {
+    activePromotions,
+    activeSubscriptions,
+    activeAdPlacements,
+    totalPromotionsPurchased: purchasedEvents.length,
+    totalPromotionsCancelled: cancelledEvents,
+    totalPromotionsExpired: expiredEvents,
+    totalSubscriptionsStarted: subStartedEvents.length,
+    totalSubscriptionsCancelled: subCancelledEvents,
+    adImpressions,
+    adClicks,
+    adClickThroughRate: rate(adClicks, adImpressions),
+    promotionRevenueCentsDeclared: sumPriceCents(purchasedEvents),
+    subscriptionRevenueCentsDeclared: sumPriceCents(subStartedEvents),
+  };
+}
+
 export async function getRepeatUsage(
   window: KpiWindow = {},
 ): Promise<RepeatUsageBucket[]> {

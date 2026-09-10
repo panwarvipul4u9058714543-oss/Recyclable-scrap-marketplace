@@ -5,6 +5,7 @@ import {
   selectBuyer,
 } from "@/lib/connections/connections";
 import { createListing, pauseListing } from "@/lib/listings/listings";
+import { purchasePromotion } from "@/lib/monetisation/promotions";
 import type { Role } from "@/lib/roles";
 import { discoverNearby, distanceKm } from "@/lib/discovery/discovery";
 import { resetDb } from "../helpers/db";
@@ -217,6 +218,38 @@ describe("discoverNearby", () => {
     await expect(
       discoverNearby(viewer, { near: { latitude: 999, longitude: 0 } }),
     ).rejects.toThrow();
+  });
+
+  it("boosts a promoted listing above nearer non-promoted results and marks it", async () => {
+    process.env.MONETISATION_ENABLED = "1";
+    const pro = await makeUser("+14155550100", ["BUSINESS"]);
+    const household = await makeUser("+14155550200", ["HOUSEHOLD"]);
+    const viewer = await makeUser("+14155550300", ["COLLECTOR"]);
+
+    // The household listing is nearer to Koramangala than the pro's remote
+    // one, so without promotion the household comes first.
+    await seedListing(household, { title: "Near", ...INDIRANAGAR });
+    const remote = await createListing(pro, {
+      ...baseListing,
+      sellerType: "BUSINESS",
+      materialCategory: "PLASTIC",
+      quantityMin: 5,
+      quantityMax: 10,
+      title: "Far promoted",
+      ...KENGERI,
+    });
+
+    // Baseline: nearer household first.
+    const baseline = await discoverNearby(viewer, { near: KORAMANGALA });
+    expect(baseline.map((r) => r.title)).toEqual(["Near", "Far promoted"]);
+    expect(baseline.every((r) => r.promoted === null)).toBe(true);
+
+    // Promote the remote one and re-query.
+    await purchasePromotion(pro, { listingId: remote.id, tier: "PREMIUM" });
+    const boosted = await discoverNearby(viewer, { near: KORAMANGALA });
+    expect(boosted.map((r) => r.title)).toEqual(["Far promoted", "Near"]);
+    expect(boosted[0].promoted?.tier).toBe("PREMIUM");
+    expect(boosted[1].promoted).toBeNull();
   });
 
   it("hides listings that already hold an active reservation", async () => {

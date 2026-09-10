@@ -12,10 +12,18 @@ import {
   materialCategorySchema,
   quantityUnitSchema,
 } from "@/lib/materials";
+import { listActivePromotionsForListingIds } from "@/lib/monetisation/promotions";
+import type { PromotionTier } from "@/lib/monetisation/plans";
 
-/** A listing plus its distance from the caller's search origin. */
+/**
+ * A listing plus its distance from the caller's search origin. When the
+ * listing carries an active paid Promotion, `promoted.tier` says which tier
+ * — the UI badges it and the sort surfaces it above non-promoted results at
+ * the same distance tier.
+ */
 export interface DiscoveryResult extends ListingDTO {
   distanceKm: number;
+  promoted: { tier: PromotionTier } | null;
 }
 
 const originSchema = z.object({
@@ -117,36 +125,74 @@ export async function discoverNearby(
   const reserved = await listingIdsWithActiveReservation(rows.map((r) => r.id));
   const visible = rows.filter((r) => !reserved.has(r.id));
 
-  const withDistance = visible.map((row) => ({
-    ...listingToDTO(row),
-    distanceKm: distanceKm(filters.near, {
-      latitude: row.latitude,
-      longitude: row.longitude,
-    }),
-  }));
+  const promotions = await listActivePromotionsForListingIds(
+    visible.map((r) => r.id),
+  );
+
+  const withDistance: DiscoveryResult[] = visible.map((row) => {
+    const promo = promotions.get(row.id);
+    return {
+      ...listingToDTO(row),
+      distanceKm: distanceKm(filters.near, {
+        latitude: row.latitude,
+        longitude: row.longitude,
+      }),
+      promoted: promo ? { tier: promo.tier } : null,
+    };
+  });
 
   const filtered = filters.maxDistanceKm
     ? withDistance.filter((r) => r.distanceKm <= filters.maxDistanceKm!)
     : withDistance;
 
-  const sorted = filtered.sort((a, b) => a.distanceKm - b.distanceKm);
+  // Promoted listings sort above non-promoted, PREMIUM above STANDARD; within
+  // each band, nearest first. This is the visibility benefit issue #8 lists
+  // for a paid Promotion — the direct-negotiation and payment flow is
+  // unchanged; the promotion only reorders and labels.
+  const promotionRank = (r: DiscoveryResult): number => {
+    if (!r.promoted) return 0;
+    return r.promoted.tier === "PREMIUM" ? 2 : 1;
+  };
+  const sorted = filtered.sort((a, b) => {
+    const rankDiff = promotionRank(b) - promotionRank(a);
+    if (rankDiff !== 0) return rankDiff;
+    return a.distanceKm - b.distanceKm;
+  });
 
-  // Record one view per listing the viewer actually saw. Fired in parallel so
-  // discovery is not slowed down by analytics; each recordEvent already
-  // swallows its own failures.
+  // Record one view per listing the viewer actually saw. Promoted listings
+  // additionally emit a PROMOTED_LISTING_VIEWED so operators can measure
+  // activation (impressions of paid inventory). Fired in parallel so
+  // discovery is not slowed down by analytics; recordEvent swallows failures.
   await Promise.all(
-    sorted.map((r) =>
-      recordEvent({
-        type: "LISTING_VIEWED",
-        channel: "HOUSEHOLD",
-        actorId: viewerId,
-        subjectType: "LISTING",
-        subjectId: r.id,
-        material: r.materialCategory,
-        locality: r.locality,
-        metadata: { distanceKm: r.distanceKm },
-      }),
-    ),
+    sorted.flatMap((r) => {
+      const events = [
+        recordEvent({
+          type: "LISTING_VIEWED",
+          channel: "HOUSEHOLD",
+          actorId: viewerId,
+          subjectType: "LISTING",
+          subjectId: r.id,
+          material: r.materialCategory,
+          locality: r.locality,
+          metadata: { distanceKm: r.distanceKm },
+        }),
+      ];
+      if (r.promoted) {
+        events.push(
+          recordEvent({
+            type: "PROMOTED_LISTING_VIEWED",
+            channel: "HOUSEHOLD",
+            actorId: viewerId,
+            subjectType: "LISTING",
+            subjectId: r.id,
+            material: r.materialCategory,
+            locality: r.locality,
+            metadata: { tier: r.promoted.tier, distanceKm: r.distanceKm },
+          }),
+        );
+      }
+      return events;
+    }),
   );
 
   return sorted;

@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import {
   getKpiChannelBreakdown,
   getKpiSummary,
+  getMonetisationKpis,
   getRepeatUsage,
   getSupplyDemandDensity,
   type KpiSummary,
 } from "@/lib/analytics/kpis";
+import { isMonetisationEnabled } from "@/lib/monetisation/config";
 import {
   PILOT_TARGETS,
   compareWithPilotTargets,
@@ -28,13 +30,15 @@ export default async function AdminAnalyticsPage() {
   if (!user) redirect("/register");
   if (!user.isAdmin) notFound();
 
-  const [summary, channels, density, repeat] = await Promise.all([
+  const [summary, channels, density, repeat, monetisation] = await Promise.all([
     getKpiSummary(),
     getKpiChannelBreakdown(),
     getSupplyDemandDensity(),
     getRepeatUsage(),
+    getMonetisationKpis(),
   ]);
   const pilotComparison = compareWithPilotTargets(summary);
+  const monetisationOn = isMonetisationEnabled();
 
   return (
     <main>
@@ -188,6 +192,75 @@ export default async function AdminAnalyticsPage() {
         />
       </section>
 
+      <section aria-label="Monetisation" style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ fontSize: "1.1rem" }}>Monetisation</h2>
+        <p style={{ color: "#9e9e9e", fontSize: "0.9rem", marginTop: 0 }}>
+          Exposure, activation and usage of paid features (issue #8). Global
+          switch is{" "}
+          <strong>{monetisationOn ? "ENABLED" : "DISABLED"}</strong> — set the{" "}
+          <code>MONETISATION_ENABLED</code> env var to <code>1</code> to turn
+          it on. Manage placements at{" "}
+          <Link href="/admin/monetisation">/admin/monetisation</Link>.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
+          <KpiTile
+            label="Active promotions"
+            value={monetisation.activePromotions}
+          />
+          <KpiTile
+            label="Promotions purchased"
+            value={monetisation.totalPromotionsPurchased}
+          />
+          <KpiTile
+            label="Promotions cancelled"
+            value={monetisation.totalPromotionsCancelled}
+          />
+          <KpiTile
+            label="Promotions expired"
+            value={monetisation.totalPromotionsExpired}
+          />
+          <KpiTile
+            label="Active subscriptions"
+            value={monetisation.activeSubscriptions}
+          />
+          <KpiTile
+            label="Subs started"
+            value={monetisation.totalSubscriptionsStarted}
+          />
+          <KpiTile
+            label="Subs cancelled"
+            value={monetisation.totalSubscriptionsCancelled}
+          />
+          <KpiTile
+            label="Active ad placements"
+            value={monetisation.activeAdPlacements}
+          />
+          <KpiTile
+            label="Ad impressions"
+            value={monetisation.adImpressions}
+          />
+          <KpiTile label="Ad clicks" value={monetisation.adClicks} />
+          <KpiTile
+            label="Ad click-through rate"
+            value={formatRate(monetisation.adClickThroughRate)}
+          />
+          <KpiTile
+            label="Promotion revenue (declared)"
+            value={formatCents(monetisation.promotionRevenueCentsDeclared)}
+          />
+          <KpiTile
+            label="Subscription revenue (declared)"
+            value={formatCents(monetisation.subscriptionRevenueCentsDeclared)}
+          />
+        </div>
+      </section>
+
       <section aria-label="Repeat usage" style={{ marginTop: "1.5rem" }}>
         <h2 style={{ fontSize: "1.1rem" }}>Repeat usage</h2>
         {repeat.length === 0 ? (
@@ -316,6 +389,16 @@ function StatusBadge({ status }: { status: ComparisonStatus }) {
       {label}
     </span>
   );
+}
+
+function formatCents(cents: number): string {
+  // Declared price only — no real currency is charged. Rendered as INR paise
+  // → rupees to match the pilot's units, without a locale library.
+  const rupees = cents / 100;
+  return `₹${rupees.toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function formatSeconds(seconds: number | null): string {

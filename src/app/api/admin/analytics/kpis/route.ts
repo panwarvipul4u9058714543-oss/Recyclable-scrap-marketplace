@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   getKpiChannelBreakdown,
   getKpiSummary,
+  getMonetisationKpis,
   getRepeatUsage,
   getSupplyDemandDensity,
 } from "@/lib/analytics/kpis";
@@ -19,11 +20,18 @@ export async function GET() {
   if (!user.isAdmin) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  const [summary, channels, density, repeat] = await Promise.all([
+  const [summary, channels, density, repeat, monetisation] = await Promise.all([
     getKpiSummary(),
     getKpiChannelBreakdown(),
     getSupplyDemandDensity(),
     getRepeatUsage(),
+    getMonetisationKpis(),
   ]);
-  return NextResponse.json({ summary, channels, density, repeat });
+  return NextResponse.json({
+    summary,
+    channels,
+    density,
+    repeat,
+    monetisation,
+  });
 }
